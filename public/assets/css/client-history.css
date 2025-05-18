@@ -1,0 +1,265 @@
+/* Estilos para el historial de pagos y abonos */
+.history-tab-content {
+    margin-top: 1rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.data-table th {
+    background-color: var(--primary-color);
+    color: white;
+    text-align: left;
+    padding: 0.5rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.data-table tr:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .data-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Estilos para los diferentes tipos de filas */
+.venta-row {
+    font-weight: 600;
+}
+
+.abono-row {
+    background-color: rgba(0, 128, 0, 0.05);
+}
+
+.pago-row {
+    background-color: rgba(0, 0, 255, 0.05);
+}
+
+.saldo-row {
+    font-weight: 600;
+    background-color: rgba(255, 0, 0, 0.05);
+}
+
+.total-row {
+    font-weight: 700;
+    background-color: rgba(240, 157, 31, 0.1);
+    border-top: 2px solid var(--primary-color);
+}
+
+/* Estilos para los botones de agregar pago */
+.add-payment-btn {
+    transition: all 0.2s ease;
+}
+
+.add-payment-btn:hover {
+    background-color: rgba(0, 128, 0, 0.1);
+    transform: scale(1.1);
+}
+
+/* Estilos para el modal de pago */
+.payment-modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.payment-modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dark .payment-modal-content {
+    background-color: #2a2a2a;
+    color: white;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Estilos para los estados */
+.estado-pendiente {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.estado-abonado {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.estado-pagado {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.estado-cancelado {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* From Uiverse.io by fthisilak */ 
+.pay-btn {
+  position: relative;
+  padding: 10px 10px;
+  font-size: 16px;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+
+.pay-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+  background: #2a2a2a;
+}
+
+.icon-container {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--primary-color);  
+  opacity: 0;
+  visibility: hidden;
+}
+
+.default-icon {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Hover animations */
+.pay-btn:hover .icon {
+  animation: none;
+}
+
+.pay-btn:hover .wallet-icon {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pay-btn:hover .card-icon {
+  animation: iconRotate 2.5s infinite;
+  animation-delay: 0s;
+}
+
+.pay-btn:hover .payment-icon {
+  animation: iconRotate 2.5s infinite;
+  animation-delay: 0.5s;
+}
+
+.pay-btn:hover .dollar-icon {
+  animation: iconRotate 2.5s infinite;
+  animation-delay: 1s;
+}
+
+.pay-btn:hover .check-icon {
+  animation: iconRotate 2.5s infinite;
+  animation-delay: 1.5s;
+}
+
+/* Active state - show only checkmark */
+.pay-btn:active .icon {
+  animation: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.pay-btn:active .check-icon {
+  animation: checkmarkAppear 0.6s ease forwards;
+  visibility: visible;
+}
+
+.btn-text {
+  font-weight: 600;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+@keyframes iconRotate {
+  0% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.5);
+  }
+  5% {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+  }
+  15% {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.5);
+  }
+}
+
+@keyframes checkmarkAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-45deg);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}

@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ah Kim Pech - Inventario</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/iconoAKPV1.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/img/iconoAKPV1.png" />
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f09d1f',
+                        secondary: '#ffffff',
+                        dark: '#121111',
+                        lightGray: '#f5f5f5',
+                        mediumGray: '#e0e0e0',
+                        darkGray: '#757575',
+                        danger: '#dc2626',
+                        warning: '#f59e0b',
+                        success: '#10b981'
+                    },
+                    boxShadow: {
+                        'custom': '0 2px 5px rgba(0,0,0,0.1)',
+                        'card': '0 1px 3px rgba(0,0,0,0.1)',
+                        'modal': '0 4px 8px rgba(0,0,0,0.2)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --primary-color: #f09d1f;
+            --secondary-color: #ffffff;
+            --dark-color: #121111;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #757575;
+            --danger-color: #dc2626;
+            --warning-color: #f59e0b;
+            --success-color: #10b981;
+        }
+
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Alert styles */
+        .alert {
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .alert-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+        }
+
+        .alert-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning-color);
+            color: var(--warning-color);
+        }
+
+        .alert-danger {
+            background-color: rgba(220, 38, 38, 0.1);
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        .alert-info {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* Stock indicator styles */
+        .stock-normal {
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        .stock-warning {
+            color: var(--warning-color);
+            font-weight: 500;
+        }
+
+        .stock-danger {
+            color: var(--danger-color);
+            font-weight: 500;
+        }
+
+        /* Tag styles for colors and materials */
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            margin: 0.125rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            background-color: var(--medium-gray);
+        }
+
+        /* Dark mode styles */
+        .dark body {
+            background-color: #1a1a1a;
+            color: #f5f5f5;
+        }
+
+        .dark .data-table th {
+            background-color: #d18b1a;
+        }
+
+        .dark .data-table {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        .dark .data-table td {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .dark .data-table tr:hover {
+            background-color: #333333;
+        }
+
+        .dark .modal-content {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        .dark input,
+        .dark select,
+        .dark textarea {
+            background-color: #333333;
+            color: #f5f5f5;
+            border-color: #444444;
+        }
+
+        .dark .tag {
+            background-color: #444444;
+            color: #f5f5f5;
+        }
+
+        /* Transition effects */
+        .tab-transition {
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Button animations */
+        .btn-action {
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-action:active {
+            transform: translateY(0);
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 100;
+            max-width: 24rem;
+        }
+
+        .toast {
+            margin-bottom: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .toast-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .toast-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .toast-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .toast-info {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* Confirmation modal */
+        .confirm-modal {
+            display: none;
+            position: fixed;
+            z-index: 60;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .confirm-modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            max-width: 30rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .dark .confirm-modal-content {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        /* Filter panel */
+        .filter-panel {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .filter-panel {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        @media print {
+
+            .main-header,
+            .main-nav,
+            .client-actions,
+            .tabs,
+            .actions,
+            .filter-panel {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-lightGray dark:bg-gray-900 text-dark dark:text-white">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Header -->
+    <header class="main-header">
+        <img src="../assets/img/iconoAKPV1.png" alt="Logo" id="logo">
+        <div class="logo">
+            <h1>Servicios Ópticos</h1>
+            <h2>Ah Kim Pech</h2>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="inventario.html">Inventario</a></li>
+                <li><a href="ventas.html">Ventas</a></li>
+                <li><a href="clientes.html">Clientes</a></li>
+                <li><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <h2 class="text-2xl font-bold mb-6 border-b-2 border-primary pb-2">Inventario</h2>
+
+        <!-- Alerts Container -->
+        <div id="alertsContainer" class="mb-4"></div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs flex mb-6 border-b border-mediumGray dark:border-gray-700">
+            <button class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative active" data-tab="productos">
+                Productos
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-0 transition-opacity"></span>
+            </button>
+            <button class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative" data-tab="armazones">
+                Armazones
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-0 transition-opacity"></span>
+            </button>
+        </div>
+
+        <!-- Products Tab -->
+        <div class="tab-content" id="productos-tab">
+            <!-- Filter Panel -->
+            <div class="filter-panel mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-3">
+                    <h3 class="text-lg font-medium mb-2 sm:mb-0">Filtros</h3>
+                    <button id="toggleProductFilters" class="text-sm text-primary hover:text-primary/80">
+                        Mostrar/Ocultar filtros
+                    </button>
+                </div>
+                <div id="productFiltersContainer" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                            <label for="filterProductoTipo" class="block mb-1 text-sm font-medium">Tipo</label>
+                            <select id="filterProductoTipo"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todos</option>
+                                <option value="producto">Producto</option>
+                                <option value="lentes">Lentes</option>
+                                <option value="armazon">Armazón</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterProductoCategoria"
+                                class="block mb-1 text-sm font-medium">Categoría</label>
+                            <select id="filterProductoCategoria"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todas</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterProductoProveedor"
+                                class="block mb-1 text-sm font-medium">Proveedor</label>
+                            <select id="filterProductoProveedor"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todos</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <label for="filterProductoPrecioMin" class="block mb-1 text-sm font-medium">Precio
+                                mínimo</label>
+                            <input type="number" id="filterProductoPrecioMin"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                placeholder="Precio mínimo">
+                        </div>
+                        <div>
+                            <label for="filterProductoPrecioMax" class="block mb-1 text-sm font-medium">Precio
+                                máximo</label>
+                            <input type="number" id="filterProductoPrecioMax"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                placeholder="Precio máximo">
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="applyProductFilters"
+                            class="bg-primary hover:bg-primary/80 text-white py-1 px-3 rounded text-sm mr-2">
+                            Aplicar filtros
+                        </button>
+                        <button id="resetProductFilters"
+                            class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-1 px-3 rounded text-sm">
+                            Limpiar filtros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Bar -->
+            <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <button id="addProductBtn"
+                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Agregar producto
+                </button>
+                <div class="search-box w-full sm:w-auto flex">
+                    <input type="text" id="searchProducto" placeholder="Buscar producto..."
+                        class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
+                    <button
+                        class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center"
+                        id="searchProductoBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="overflow-x-auto shadow-card rounded-lg">
+                <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">Código</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Nombre</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Categoría</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Proveedor</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Precio compra</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Precio venta</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Stock</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productosTableBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                        <!-- Data will be loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Frames Tab -->
+        <div class="tab-content" id="armazones-tab" style="display: none;">
+            <!-- Filter Panel -->
+            <div class="filter-panel mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-3">
+                    <h3 class="text-lg font-medium mb-2 sm:mb-0">Filtros</h3>
+                    <button id="toggleArmazonFilters" class="text-sm text-primary hover:text-primary/80">
+                        Mostrar/Ocultar filtros
+                    </button>
+                </div>
+                <div id="armazonFiltersContainer" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                            <label for="filterArmazonMarca" class="block mb-1 text-sm font-medium">Marca</label>
+                            <select id="filterArmazonMarca"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todas</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterArmazonMaterial" class="block mb-1 text-sm font-medium">Material</label>
+                            <select id="filterArmazonMaterial"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todos</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterArmazonProveedor" class="block mb-1 text-sm font-medium">Proveedor</label>
+                            <select id="filterArmazonProveedor"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todos</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <label for="filterArmazonPrecioMin" class="block mb-1 text-sm font-medium">Precio
+                                mínimo</label>
+                            <input type="number" id="filterArmazonPrecioMin"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                placeholder="Precio mínimo">
+                        </div>
+                        <div>
+                            <label for="filterArmazonPrecioMax" class="block mb-1 text-sm font-medium">Precio
+                                máximo</label>
+                            <input type="number" id="filterArmazonPrecioMax"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                placeholder="Precio máximo">
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="applyArmazonFilters"
+                            class="bg-primary hover:bg-primary/80 text-white py-1 px-3 rounded text-sm mr-2">
+                            Aplicar filtros
+                        </button>
+                        <button id="resetArmazonFilters"
+                            class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-1 px-3 rounded text-sm">
+                            Limpiar filtros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Bar -->
+            <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <button id="addArmazonBtn"
+                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Agregar armazón
+                </button>
+                <div class="search-box w-full sm:w-auto flex">
+                    <input type="text" id="searchArmazon" placeholder="Buscar armazón..."
+                        class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
+                    <button
+                        class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center"
+                        id="searchArmazonBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Frames Table -->
+            <div class="overflow-x-auto shadow-card rounded-lg">
+                <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">Código</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Nombre</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Marca</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Modelo</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Colores</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Materiales</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Precio venta</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Stock</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="armazonesTableBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                        <!-- Data will be loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Product Modal -->
+    <div id="productoModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-3xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="productoModalTitle" class="text-xl font-semibold">Agregar Producto</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="productoForm" class="space-y-4">
+                <input type="hidden" id="productoId">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="productoCodigo" class="block mb-1 font-medium">Código *</label>
+                        <input type="text" id="productoCodigo"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="productoNombre" class="block mb-1 font-medium">Nombre *</label>
+                        <input type="text" id="productoNombre"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="productoDescripcion" class="block mb-1 font-medium">Descripción</label>
+                    <textarea id="productoDescripcion" rows="2"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="productoTipo" class="block mb-1 font-medium">Tipo *</label>
+                        <select id="productoTipo"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                            <option value="">Seleccione un tipo</option>
+                            <option value="producto">Producto</option>
+                            <option value="lentes">Lentes</option>
+                            <option value="armazon">Armazón</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="productoCategoria" class="block mb-1 font-medium">Categoría *</label>
+                        <select id="productoCategoria"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                            <option value="">Cargando categorías...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="productoProveedor" class="block mb-1 font-medium">Proveedor</label>
+                    <select id="productoProveedor"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Cargando proveedores...</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="form-group">
+                        <label for="productoPrecioCompra" class="block mb-1 font-medium">Precio de compra *</label>
+                        <input type="number" step="0.01" id="productoPrecioCompra"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="productoPrecioVenta" class="block mb-1 font-medium">Precio de venta *</label>
+                        <input type="number" step="0.01" id="productoPrecioVenta"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="productoStock" class="block mb-1 font-medium">Stock *</label>
+                        <input type="number" id="productoStock" value="0"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="productoStockMinimo" class="block mb-1 font-medium">Stock mínimo</label>
+                        <input type="number" id="productoStockMinimo" value="5"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Cantidad para alertar de stock bajo</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="productoStockCritico" class="block mb-1 font-medium">Stock crítico</label>
+                        <input type="number" id="productoStockCritico" value="2"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Cantidad para alertar de stock crítico
+                        </p>
+                    </div>
+                </div>
+
+                <div id="error-message" class="text-red-500 text-sm hidden"></div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Frame Modal -->
+    <div id="armazonModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-3xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="armazonModalTitle" class="text-xl font-semibold">Agregar Armazón</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="armazonForm" class="space-y-4">
+                <input type="hidden" id="armazonId">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="armazonCodigo" class="block mb-1 font-medium">Código *</label>
+                        <input type="text" id="armazonCodigo"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="armazonNombre" class="block mb-1 font-medium">Nombre *</label>
+                        <input type="text" id="armazonNombre"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="armazonMarca" class="block mb-1 font-medium">Marca *</label>
+                        <input type="text" id="armazonMarca"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="armazonModelo" class="block mb-1 font-medium">Modelo *</label>
+                        <input type="text" id="armazonModelo"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="armazonColores" class="block mb-1 font-medium">Colores disponibles</label>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <div id="coloresContainer" class="flex flex-wrap gap-1"></div>
+                    </div>
+                    <div class="flex">
+                        <input type="text" id="nuevoColor"
+                            class="flex-grow p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            placeholder="Agregar color...">
+                        <button type="button" id="addColorBtn"
+                            class="bg-primary hover:bg-primary/80 text-white py-2 px-3 rounded-r-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </button>
+                    </div>
+                    <input type="hidden" id="armazonColoresHidden">
+                </div>
+
+                <div class="form-group">
+                    <label for="armazonMateriales" class="block mb-1 font-medium">Materiales de construcción</label>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <div id="materialesContainer" class="flex flex-wrap gap-1"></div>
+                    </div>
+                    <div class="flex">
+                        <input type="text" id="nuevoMaterial"
+                            class="flex-grow p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            placeholder="Agregar material...">
+                        <button type="button" id="addMaterialBtn"
+                            class="bg-primary hover:bg-primary/80 text-white py-2 px-3 rounded-r-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </button>
+                    </div>
+                    <input type="hidden" id="armazonMaterialesHidden">
+                </div>
+
+                <div class="form-group">
+                    <label for="armazonProveedor" class="block mb-1 font-medium">Proveedor</label>
+                    <select id="armazonProveedor"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Cargando proveedores...</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="form-group">
+                        <label for="armazonPrecioCompra" class="block mb-1 font-medium">Precio de compra *</label>
+                        <input type="number" step="0.01" id="armazonPrecioCompra"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="armazonPrecioVenta" class="block mb-1 font-medium">Precio de venta *</label>
+                        <input type="number" step="0.01" id="armazonPrecioVenta"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="armazonStock" class="block mb-1 font-medium">Stock *</label>
+                        <input type="number" id="armazonStock" value="0"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="armazonStockMinimo" class="block mb-1 font-medium">Stock mínimo</label>
+                        <input type="number" id="armazonStockMinimo" value="3"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Cantidad para alertar de stock bajo</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="armazonStockCritico" class="block mb-1 font-medium">Stock crítico</label>
+                        <input type="number" id="armazonStockCritico" value="1"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Cantidad para alertar de stock crítico
+                        </p>
+                    </div>
+                </div>
+
+                <div id="armazon-error-message" class="text-red-500 text-sm hidden"></div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="confirm-modal">
+        <div
+            class="confirm-modal-content bg-white dark:bg-gray-800 w-11/12 max-w-md mx-auto rounded-lg shadow-modal p-6">
+            <h3 id="confirmTitle" class="text-xl font-semibold mb-4">Confirmar acción</h3>
+            <p id="confirmMessage" class="mb-6">¿Estás seguro de que deseas realizar esta acción?</p>
+            <div class="flex justify-end space-x-2">
+                <button id="confirmCancel"
+                    class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                <button id="confirmOk"
+                    class="py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Out of Stock Modal -->
+    <div id="outOfStockModal" class="confirm-modal">
+        <div
+            class="confirm-modal-content bg-white dark:bg-gray-800 w-11/12 max-w-md mx-auto rounded-lg shadow-modal p-6">
+            <h3 class="text-xl font-semibold mb-4">Producto agotado</h3>
+            <p id="outOfStockMessage" class="mb-6">El producto se ha agotado. ¿Deseas eliminarlo del inventario o
+                conservarlo para un posible reabastecimiento?</p>
+            <div class="flex justify-end space-x-2">
+                <button id="keepProduct"
+                    class="py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors">Conservar</button>
+                <button id="removeProduct"
+                    class="py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded transition-colors">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="../assets/js/auth-check.js"></script>
+    <script type="module" src="../assets/js/inventario.js"></script>
+</body>
+
+</html>

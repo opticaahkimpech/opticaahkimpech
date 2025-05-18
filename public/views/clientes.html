@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ah Kim Pech - Clientes</title>
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <link rel="stylesheet" href="../assets/css/client-history.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f09d1f',
+                        secondary: '#ffffff',
+                        dark: '#121111',
+                        lightGray: '#f5f5f5',
+                        mediumGray: '#e0e0e0',
+                        darkGray: '#757575'
+                    },
+                    boxShadow: {
+                        'custom': '0 2px 5px rgba(0,0,0,0.1)',
+                        'card': '0 1px 3px rgba(0,0,0,0.1)',
+                        'modal': '0 4px 8px rgba(0,0,0,0.2)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --primary-color: #f09d1f;
+            --secondary-color: #ffffff;
+            --dark-color: #121111;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #757575;
+        }
+
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Dark mode styles */
+        .dark body {
+            background-color: #1a1a1a;
+            color: #f5f5f5;
+        }
+
+        .dark .data-table th {
+            background-color: #d18b1a;
+        }
+
+        .dark .data-table {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        .dark .data-table td {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .dark .data-table tr:hover {
+            background-color: #333333;
+        }
+
+        .dark .modal-content {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        .dark input,
+        .dark select,
+        .dark textarea {
+            background-color: #333333;
+            color: #f5f5f5;
+            border-color: #444444;
+        }
+
+        /* Button animations */
+        .btn-action {
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-action:active {
+            transform: translateY(0);
+        }
+
+        /* Print styles */
+        @media print {
+
+            .main-header,
+            .main-nav,
+            .client-actions,
+            #closeCardBtn {
+                display: none !important;
+            }
+
+            .client-card {
+                padding: 0;
+                margin: 0;
+            }
+
+            .modal-content {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-lightGray dark:bg-gray-900 text-dark dark:text-white">
+    <!-- Header -->
+    <header class="main-header">
+        <img src="../assets/img/iconoAKPV1.png" alt="Logo" id="logo">
+        <div class="logo">
+            <h1>Servicios Ópticos</h1>
+            <h2>Ah Kim Pech</h2>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="inventario.html">Inventario</a></li>
+                <li><a href="ventas.html">Ventas</a></li>
+                <li><a href="clientes.html">Clientes</a></li>
+                <li><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <h2 class="text-2xl font-bold mb-6 border-b-2 border-primary pb-2">Clientes</h2>
+
+        <!-- Actions Bar -->
+        <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <button id="addClientBtn"
+                class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Nuevo cliente
+            </button>
+            <div class="search-box w-full sm:w-auto flex">
+                <input type="text" id="searchCliente" placeholder="Buscar cliente..."
+                    class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
+                <button
+                    class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center"
+                    id="searchClienteBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros Panel (inicialmente oculto) -->
+        <div id="filtrosPanel" class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-card mb-6" style="display: none;">
+            <h3 class="text-lg font-semibold mb-3">Filtros avanzados</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label for="filtroConvenio" class="block mb-1 font-medium">Convenio</label>
+                    <select id="filtroConvenio"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Todos</option>
+                        <option value="true">Con convenio</option>
+                        <option value="false">Sin convenio</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filtroEmpresa" class="block mb-1 font-medium">Empresa</label>
+                    <select id="filtroEmpresa"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Todas</option>
+                        <!-- Se llenará dinámicamente -->
+                    </select>
+                </div>
+                <div class="form-group flex items-end">
+                    <button id="aplicarFiltrosBtn"
+                        class="btn-action bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                        Aplicar filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clients Table -->
+        <div class="overflow-x-auto shadow-card rounded-lg">
+            <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                <thead>
+                    <tr>
+                        <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">ID Cliente</th>
+                        <th class="py-3 px-4 text-left bg-primary text-white">Nombre</th>
+                        <th class="py-3 px-4 text-left bg-primary text-white">Teléfono</th>
+                        <th class="py-3 px-4 text-left bg-primary text-white">Email</th>
+                        <th class="py-3 px-4 text-left bg-primary text-white">Última visita</th>
+                        <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsTableBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                    <!-- Data will be loaded dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="pagination flex justify-center mt-6">
+            <button id="prevPageBtn"
+                class="py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-l hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                disabled>
+                Anterior
+            </button>
+            <div id="pageInfo"
+                class="py-2 px-4 bg-white dark:bg-gray-800 border-t border-b border-mediumGray dark:border-gray-700">
+                Página <span id="currentPage">1</span> de <span id="totalPages">1</span>
+            </div>
+            <button id="nextPageBtn"
+                class="py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-r hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                disabled>
+                Siguiente
+            </button>
+        </div>
+    </main>
+
+    <!-- New/Edit Client Modal -->
+    <div id="clientModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="modalTitle" class="text-xl font-semibold">Nuevo Cliente</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="clientForm" class="space-y-4">
+                <input type="hidden" id="clientId">
+
+                <div class="form-group">
+                    <label for="clientName" class="block mb-1 font-medium">Nombre completo</label>
+                    <input type="text" id="clientName"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="clientPhone" class="block mb-1 font-medium">Teléfono</label>
+                        <input type="tel" id="clientPhone"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="clientEmail" class="block mb-1 font-medium">Email</label>
+                        <input type="email" id="clientEmail"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="clientAddress" class="block mb-1 font-medium">Dirección</label>
+                    <textarea id="clientAddress" rows="2"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="clientBirthdate" class="block mb-1 font-medium">Fecha de nacimiento</label>
+                        <input type="date" id="clientBirthdate"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div class="form-group opacity-50" id="clientEmpresaGroup">
+                        <label for="clientEmpresa" class="block mb-1 font-medium">Empresa (Convenio)</label>
+                        <select id="clientEmpresa"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            disabled>
+                            <option value="">Sin convenio</option>
+                            <!-- Options will be loaded dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="clientConvenio" class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="clientConvenio"
+                            class="w-4 h-4 text-primary focus:ring-primary rounded border-gray-300 dark:border-gray-600">
+                        <span>Cliente con convenio</span>
+                    </label>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar
+                        cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Client Card Modal -->
+    <div id="clientCardModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Tarjeta de Cliente</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+
+            <div class="client-card space-y-6">
+                <!-- Client Info Section -->
+                <div class="client-info bg-lightGray dark:bg-gray-700 p-5 rounded-lg">
+                    <div class="grid md:grid-cols-2 gap-x-4 gap-y-2">
+                        <div class="col-span-2">
+                            <h4 id="cardClientName" class="text-xl font-semibold text-primary dark:text-primary mb-3">
+                                Nombre del Cliente</h4>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Teléfono:</span> <span id="cardClientPhone">555-1234</span>
+                            </p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Email:</span> <span
+                                    id="cardClientEmail">cliente@ejemplo.com</span></p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Dirección:</span> <span id="cardClientAddress">Calle
+                                    Principal #123</span></p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Fecha nacimiento:</span> <span
+                                    id="cardClientBirthdate">01/01/1990</span></p>
+                        </div>
+                        <div class="mb-2" id="cardClientConvenioContainer">
+                            <p><span class="font-semibold">Convenio:</span> <span id="cardClientConvenio">No</span></p>
+                        </div>
+                        <div class="mb-2" id="cardClientEmpresaContainer">
+                            <p><span class="font-semibold">Empresa:</span> <span id="cardClientEmpresa">N/A</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs para historial -->
+                <div class="client-history-tabs">
+                    <div class="flex border-b border-mediumGray dark:border-gray-700">
+                        <button class="history-tab-btn py-2 px-4 mr-2 font-medium relative active" data-tab="compras">
+                            Compras
+                            <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary"></span>
+                        </button>
+                    </div>
+
+                    <!-- Historial de compras -->
+                    <div class="history-tab-content" id="compras-tab">
+                        <h4 class="text-lg font-semibold my-3">Historial de compras</h4>
+                        <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                            <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                                <thead>
+                                    <tr>
+                                        <th
+                                            class="py-2 px-4 text-left bg-primary text-white sticky top-0 rounded-tl-lg">
+                                            Fecha</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Producto</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Estado</th>
+                                        <th
+                                            class="py-2 px-4 text-left bg-primary text-white sticky top-0 rounded-tr-lg">
+                                            Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientHistoryBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                                    <!-- Data will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Section -->
+                <div
+                    class="client-actions flex justify-end space-x-4 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button
+                        class="btn-action bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded transition-colors flex items-center"
+                        id="newSaleBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Nueva venta
+                    </button>
+                    <button
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors flex items-center"
+                        id="printCardBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Imprimir tarjeta
+                    </button>
+                    <button
+                        class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center"
+                        id="closeCardBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script type="module" src="../assets/js/auth-check.js"></script>
+<script type="module" src="../assets/js/clientes.js"></script>
+</html>

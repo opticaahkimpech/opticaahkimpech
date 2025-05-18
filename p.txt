@@ -1,0 +1,23 @@
+
+/proyecto-optica
+/public
+|     |_____/assets
+|     |           |_____css
+|     |           |_____js
+|     |           |_____img
+|     |_____/views
+|     |           |_____clientes.html
+|     |           |_____inventario.html
+|     |           |_____ventas.html
+|     |______index.html
+/server
+|     |______/auth
+|     |           |_____auth-check.json
+|     |           |_____auth.json
+|     |_____/config
+|     |           |_____config.json
+|     |           |_____firebase-config.json
+|     |____index.js
+|     |____init-admin-user.js
+.env
+package.json

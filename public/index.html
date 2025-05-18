@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio de sesión - Administrador</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/img/iconoAKPV1.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/img/iconoAKPV1.png" />
+    <link rel="stylesheet" href="./assets/css/auth.css">
+    <link rel="stylesheet" href="./assets/css/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-container">
+            <img src="./assets/img/logoAKP.png" alt="Logo" class="login-logo">
+        </div>
+        <form id="loginForm" class="login-form">
+            <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" required>
+                    <button type="button" id="togglePassword" class="toggle-password">
+                        👁️
+                    </button>
+                </div>
+                <div id="forgotPassword">
+                    <a id="forgotPasswordLink" href="#">¿Olvidaste tu contraseña?</a>
+                </div>
+            </div>
+            <div id="error-message" class="error-message"></div>
+            <button type="submit" class="btn-primary login-btn">Iniciar sesión</button>
+        </form>
+    </div>
+
+    <!-- Scripts de la aplicación con type="module" -->
+    <script type="module" src="./assets/js/login.js"></script>
+</body>
+</html>
