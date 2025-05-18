@@ -312,3 +312,25 @@ body {
     position: absolute;
     left: 10px;
 }
+
+/* Estilos para el indicador de rol de usuario */
+/* Estilos para los badges de rol */
+.role-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 5px;
+  text-align: center;
+}
+
+.admin-badge {
+  background-color: #dc2626;
+  color: white;
+}
+
+.employee-badge {
+  background-color: #2563eb;
+  color: white;
+}
