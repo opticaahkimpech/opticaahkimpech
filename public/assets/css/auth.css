@@ -98,7 +98,7 @@
     flex: 1; 
 }
 
-#togglePassword {
+#togglePassword, #toggleEmployeePassword {
     position: absolute;
     width: 10px;
     background-color: transparent;
@@ -116,4 +116,19 @@
     color: var(--primary-color);
     text-decoration: none;
     font-size: 0.9rem;
+}
+
+.toggle-login-mode {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.toggle-login-mode a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.toggle-login-mode a:hover {
+  text-decoration: underline;
 }
