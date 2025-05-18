@@ -1,11 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Ah Kim Pech - Convenios</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/iconoAKPV1.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../assets/img/iconoAKPV1.png" />
+    <link rel="stylesheet" href="../assets/css/styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f09d1f',
+                        secondary: '#ffffff',
+                        dark: '#121111',
+                        lightGray: '#f5f5f5',
+                        mediumGray: '#e0e0e0',
+                        darkGray: '#757575',
+                        danger: '#dc2626',
+                        warning: '#f59e0b',
+                        success: '#10b981'
+                    },
+                    boxShadow: {
+                        'custom': '0 2px 5px rgba(0,0,0,0.1)',
+                        'card': '0 1px 3px rgba(0,0,0,0.1)',
+                        'modal': '0 4px 8px rgba(0,0,0,0.2)'
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    
+
+<body class="bg-lightGray dark:bg-gray-900 text-dark dark:text-white">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Header -->
+    <header class="main-header">
+        <img src="../assets/img/iconoAKPV1.png" alt="Logo" id="logo">
+        <div class="logo">
+            <h1>Servicios Ópticos</h1>
+            <h2>Ah Kim Pech</h2>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="inventario.html">Inventario</a></li>
+                <li><a href="ventas.html">Ventas</a></li>
+                <li><a href="clientes.html">Clientes</a></li>
+                <li><a href="convenios.html">Convenios</a></li>
+                <li><a href="usuarios.html">Usuarios</a></li>
+                <li><a href="#" id="logoutBtn">Cerrar sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <script type="module" src="../assets/js/auth-check.js"></script>
 </body>
+
 </html>
