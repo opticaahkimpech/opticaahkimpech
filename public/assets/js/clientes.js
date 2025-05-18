@@ -85,8 +85,6 @@ async function checkAndCreateClientesCollection() {
         const clientesSnapshot = await getDocs(collection(db, 'clientes'));
         if (clientesSnapshot.empty) {
             console.log("Creando colección de clientes...");
-            // No es necesario crear un documento placeholder, la colección se creará automáticamente
-            // al agregar el primer cliente
         }
 
         // Verificar si existe la colección de empresas (para convenios)
