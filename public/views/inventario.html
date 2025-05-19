@@ -419,15 +419,17 @@
 
             <!-- Actions Bar -->
             <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <button id="addProductBtn"
-                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Agregar producto
-                </button>
+                <div class="flex gap-2">
+                    <button id="addProductBtn"
+                        class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Agregar producto
+                    </button>
+                </div>
                 <div class="search-box w-full sm:w-auto flex">
                     <input type="text" id="searchProducto" placeholder="Buscar producto..."
                         class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
@@ -450,9 +452,10 @@
                         <tr>
                             <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">Código</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Nombre</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Descripción</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Tipo</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Categoría</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Proveedor</th>
-                            <th class="py-3 px-4 text-left bg-primary text-white">Precio compra</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Precio venta</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Stock</th>
                             <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
@@ -533,15 +536,17 @@
 
             <!-- Actions Bar -->
             <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <button id="addArmazonBtn"
-                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Agregar armazón
-                </button>
+                <div class="flex gap-2">
+                    <button id="addArmazonBtn"
+                        class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Agregar armazón
+                    </button>
+                </div>
                 <div class="search-box w-full sm:w-auto flex">
                     <input type="text" id="searchArmazon" placeholder="Buscar armazón..."
                         class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
@@ -568,6 +573,7 @@
                             <th class="py-3 px-4 text-left bg-primary text-white">Modelo</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Colores</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Materiales</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Proveedor</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Precio venta</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Stock</th>
                             <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
@@ -595,9 +601,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
                         <label for="productoCodigo" class="block mb-1 font-medium">Código *</label>
-                        <input type="text" id="productoCodigo"
-                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
-                            required>
+                        <div class="flex">
+                            <input type="text" id="productoCodigo"
+                                class="w-full p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                required>
+                            <button type="button" id="generateProductCodeBtn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-r-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="productoNombre" class="block mb-1 font-medium">Nombre *</label>
@@ -627,20 +643,40 @@
                     </div>
                     <div class="form-group">
                         <label for="productoCategoria" class="block mb-1 font-medium">Categoría *</label>
-                        <select id="productoCategoria"
-                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
-                            required>
-                            <option value="">Cargando categorías...</option>
-                        </select>
+                        <div class="flex">
+                            <select id="productoCategoria"
+                                class="w-full p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                required>
+                                <option value="">Cargando categorías...</option>
+                            </select>
+                            <button type="button" id="manageCategoriesBtn"
+                                class="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-r-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="productoProveedor" class="block mb-1 font-medium">Proveedor</label>
-                    <select id="productoProveedor"
-                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
-                        <option value="">Cargando proveedores...</option>
-                    </select>
+                    <div class="flex">
+                        <select id="productoProveedor"
+                            class="w-full p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">Cargando proveedores...</option>
+                        </select>
+                        <button type="button" id="manageProvidersBtn"
+                            class="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-r-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -706,9 +742,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
                         <label for="armazonCodigo" class="block mb-1 font-medium">Código *</label>
-                        <input type="text" id="armazonCodigo"
-                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
-                            required>
+                        <div class="flex">
+                            <input type="text" id="armazonCodigo"
+                                class="w-full p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                required>
+                            <button type="button" id="generateFrameCodeBtn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-r-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="armazonNombre" class="block mb-1 font-medium">Nombre *</label>
@@ -737,6 +783,7 @@
                     <label for="armazonColores" class="block mb-1 font-medium">Colores disponibles</label>
                     <div class="flex flex-wrap items-center gap-2 mb-2">
                         <div id="coloresContainer" class="flex flex-wrap gap-1"></div>
+                        <div id="coloresSeleccionados" class="flex flex-wrap gap-1"></div>
                     </div>
                     <div class="flex">
                         <input type="text" id="nuevoColor"
@@ -758,6 +805,7 @@
                     <label for="armazonMateriales" class="block mb-1 font-medium">Materiales de construcción</label>
                     <div class="flex flex-wrap items-center gap-2 mb-2">
                         <div id="materialesContainer" class="flex flex-wrap gap-1"></div>
+                        <div id="materialesSeleccionados" class="flex flex-wrap gap-1"></div>
                     </div>
                     <div class="flex">
                         <input type="text" id="nuevoMaterial"
@@ -777,10 +825,20 @@
 
                 <div class="form-group">
                     <label for="armazonProveedor" class="block mb-1 font-medium">Proveedor</label>
-                    <select id="armazonProveedor"
-                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
-                        <option value="">Cargando proveedores...</option>
-                    </select>
+                    <div class="flex">
+                        <select id="armazonProveedor"
+                            class="w-full p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">Cargando proveedores...</option>
+                        </select>
+                        <button type="button" id="addProviderBtn2"
+                            class="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-r-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -851,7 +909,7 @@
     <div id="outOfStockModal" class="confirm-modal">
         <div
             class="confirm-modal-content bg-white dark:bg-gray-800 w-11/12 max-w-md mx-auto rounded-lg shadow-modal p-6">
-            <h3 class="text-xl font-semibold mb-4">Producto agotado</h3>
+            <h3 id="outOfStockTitle" class="text-xl font-semibold mb-4">Producto agotado</h3>
             <p id="outOfStockMessage" class="mb-6">El producto se ha agotado. ¿Deseas eliminarlo del inventario o
                 conservarlo para un posible reabastecimiento?</p>
             <div class="flex justify-end space-x-2">
@@ -863,10 +921,357 @@
         </div>
     </div>
 
+    <!-- Categorías Modal -->
+    <div id="categoriasModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-3xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Administrar Categorías</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            
+            <div class="mb-6">
+                <h4 class="text-lg font-medium mb-2">Agregar nueva categoría</h4>
+                <div class="flex">
+                    <input type="text" id="nuevaCategoria" placeholder="Nombre de la categoría"
+                        class="flex-grow p-2 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    <button type="button" id="addCategoriaBtn"
+                        class="bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded-r-md">
+                        Agregar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 dark:bg-gray-700">
+                            <th class="p-2 text-left">ID</th>
+                            <th class="p-2 text-left">Nombre</th>
+                            <th class="p-2 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoriasTableBody" class="divide-y divide-mediumGray dark:divide-gray-600">
+                        <!-- Se cargará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="flex justify-end mt-6">
+                <button type="button"
+                    class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proveedores Modal -->
+    <div id="proveedoresModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-3xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Administrar Proveedores</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            
+            <div class="mb-6">
+                <h4 class="text-lg font-medium mb-2">Agregar nuevo proveedor</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                    <input type="text" id="nuevoProveedorNombre" placeholder="Nombre del proveedor"
+                        class="p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    <input type="text" id="nuevoProveedorContacto" placeholder="Persona de contacto"
+                        class="p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                    <input type="tel" id="nuevoProveedorTelefono" placeholder="Teléfono"
+                        class="p-2 border border-  placeholder="Teléfono"
+                        class="p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    <input type="email" id="nuevoProveedorEmail" placeholder="Email"
+                        class="p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" id="addProveedorBtn"
+                        class="bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded">
+                        Agregar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 dark:bg-gray-700">
+                            <th class="p-2 text-left">ID</th>
+                            <th class="p-2 text-left">Nombre</th>
+                            <th class="p-2 text-left">Contacto</th>
+                            <th class="p-2 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="proveedoresTableBody" class="divide-y divide-mediumGray dark:divide-gray-600">
+                        <!-- Se cargará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="flex justify-end mt-6">
+                <button type="button"
+                    class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editar Categoría Modal -->
+    <div id="editCategoriaModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-1/2 max-w-md mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Editar Categoría</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            
+            <form id="editCategoriaForm" class="space-y-4">
+                <input type="hidden" id="editCategoriaId">
+                
+                <div class="form-group">
+                    <label for="editCategoriaNombre" class="block mb-1 font-medium">Nombre *</label>
+                    <input type="text" id="editCategoriaNombre"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                </div>
+                
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Editar Proveedor Modal -->
+    <div id="editProveedorModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-1/2 max-w-md mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Editar Proveedor</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            
+            <form id="editProveedorForm" class="space-y-4">
+                <input type="hidden" id="editProveedorId">
+                
+                <div class="form-group">
+                    <label for="editProveedorNombre" class="block mb-1 font-medium">Nombre *</label>
+                    <input type="text" id="editProveedorNombre"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editProveedorContacto" class="block mb-1 font-medium">Contacto</label>
+                    <input type="text" id="editProveedorContacto"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editProveedorTelefono" class="block mb-1 font-medium">Teléfono</label>
+                    <input type="tel" id="editProveedorTelefono"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editProveedorEmail" class="block mb-1 font-medium">Email</label>
+                    <input type="email" id="editProveedorEmail"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module" src="../assets/js/check-current-user.js"></script>
     <script type="module" src="../assets/js/auth-check.js"></script>
     <script type="module" src="../assets/js/inventario.js"></script>
+    
+    <!-- Script para la generación de códigos y gestión de categorías/proveedores -->
+    <script>
+        // Función para generar código automático basado en categoría
+        async function generarCodigoProducto(categoriaId) {
+            // Obtener información de la categoría
+            try {
+                const response = await fetch(`http://localhost:3000/api/categorias/${categoriaId}`);
+                const categoria = await response.json();
+                
+                // Obtener prefijo según la categoría
+                let prefijo = '';
+                switch (categoria.nombre.toLowerCase()) {
+                    case 'armazones':
+                        prefijo = 'ARM';
+                        break;
+                    case 'lentes de contacto':
+                        prefijo = 'CONT';
+                        break;
+                    case 'solares':
+                        prefijo = 'SOL';
+                        break;
+                    case 'accesorios':
+                        prefijo = 'ACC';
+                        break;
+                    case 'limpieza':
+                        prefijo = 'LIMP';
+                        break;
+                    default:
+                        // Usar las primeras 4 letras de la categoría
+                        prefijo = categoria.nombre.substring(0, 4).toUpperCase();
+                }
+                
+                // Buscar el último código con ese prefijo
+                const ultimoCodigoResponse = await fetch(`http://localhost:3000/api/productos/ultimo-codigo?prefijo=${prefijo}`);
+                const data = await ultimoCodigoResponse.json();
+                
+                let secuencia = 1;
+                if (data && data.ultimoCodigo) {
+                    // Extraer la secuencia numérica del último código
+                    const match = data.ultimoCodigo.match(/\d+$/);
+                    if (match) {
+                        secuencia = parseInt(match[0]) + 1;
+                    }
+                }
+                
+                // Formatear la secuencia con ceros a la izquierda (3 dígitos)
+                const secuenciaFormateada = secuencia.toString().padStart(3, '0');
+                
+                return `${prefijo}${secuenciaFormateada}`;
+            } catch (error) {
+                console.error('Error al generar código:', error);
+                
+                // Generar un código alternativo basado en fecha
+                const hoy = new Date();
+                const prefijo = 'PROD';
+                const fechaStr = (hoy.getMonth() + 1).toString().padStart(2, '0') + 
+                                hoy.getDate().toString().padStart(2, '0');
+                const secuencia = Math.floor(Math.random() * 999).toString().padStart(3, '0');
+                
+                return `${prefijo}${fechaStr}${secuencia}`;
+            }
+        }
+
+        // Configurar eventos cuando el DOM esté cargado
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botones para generar códigos
+            const generateProductCodeBtn = document.getElementById('generateProductCodeBtn');
+            if (generateProductCodeBtn) {
+                generateProductCodeBtn.addEventListener('click', async () => {
+                    const categoriaSelect = document.getElementById('productoCategoria');
+                    if (categoriaSelect && categoriaSelect.value) {
+                        const codigo = await generarCodigoProducto(categoriaSelect.value);
+                        document.getElementById('productoCodigo').value = codigo;
+                    } else {
+                        alert('Por favor, seleccione una categoría primero');
+                    }
+                });
+            }
+
+            const generateFrameCodeBtn = document.getElementById('generateFrameCodeBtn');
+            if (generateFrameCodeBtn) {
+                generateFrameCodeBtn.addEventListener('click', async () => {
+                    // Buscar la categoría de armazones o generar un código genérico
+                    try {
+                        const response = await fetch('http://localhost:3000/api/categorias');
+                        const categorias = await response.json();
+                        
+                        const armazonesCategoria = categorias.find(cat => 
+                            cat.nombre.toLowerCase() === 'armazones');
+                        
+                        if (armazonesCategoria) {
+                            const codigo = await generarCodigoProducto(armazonesCategoria.id);
+                            document.getElementById('armazonCodigo').value = codigo;
+                        } else {
+                            // Generar código genérico para armazones
+                            const hoy = new Date();
+                            const prefijo = 'ARM';
+                            const fechaStr = (hoy.getMonth() + 1).toString().padStart(2, '0') + 
+                                            hoy.getDate().toString().padStart(2, '0');
+                            const secuencia = Math.floor(Math.random() * 999).toString().padStart(3, '0');
+                            
+                            document.getElementById('armazonCodigo').value = `${prefijo}${fechaStr}${secuencia}`;
+                        }
+                    } catch (error) {
+                        console.error('Error al generar código para armazón:', error);
+                        
+                        // Generar código genérico para armazones en caso de error
+                        const hoy = new Date();
+                        const prefijo = 'ARM';
+                        const fechaStr = (hoy.getMonth() + 1).toString().padStart(2, '0') + 
+                                        hoy.getDate().toString().padStart(2, '0');
+                        const secuencia = Math.floor(Math.random() * 999).toString().padStart(3, '0');
+                        
+                        document.getElementById('armazonCodigo').value = `${prefijo}${fechaStr}${secuencia}`;
+                    }
+                });
+            }
+
+            // Botones para administrar categorías
+            const manageCategoriesBtn = document.getElementById('manageCategoriesBtn');
+            const manageCategoriesBtn2 = document.getElementById('manageCategoriesBtn2');
+            const addCategoryBtn = document.getElementById('addCategoryBtn');
+            const addCategoryBtn2 = document.getElementById('addProviderBtn2');
+            
+            if (manageCategoriesBtn) {
+                manageCategoriesBtn.addEventListener('click', () => {
+                    mostrarModalCategorias();
+                });
+            }
+            
+            if (manageCategoriesBtn2) {
+                manageCategoriesBtn2.addEventListener('click', () => {
+                    mostrarModalCategorias();
+                });
+            }
+            
+            if (addCategoryBtn) {
+                addCategoryBtn.addEventListener('click', () => {
+                    mostrarModalCategorias();
+                });
+            }
+
+            // Botones para administrar proveedores
+            const manageProvidersBtn = document.getElementById('manageProvidersBtn');
+            const manageProvidersBtn2 = document.getElementById('manageProvidersBtn2');
+            const addProviderBtn = document.getElementById('addProviderBtn');
+            
+            if (manageProvidersBtn) {
+                manageProvidersBtn.addEventListener('click', () => {
+                    mostrarModalProveedores();
+                });
+            }
+            
+            if (manageProvidersBtn2) {
+                manageProvidersBtn2.addEventListener('click', () => {
+                    mostrarModalProveedores();
+                });
+            }
+            
+            if (addProviderBtn) {
+                addProviderBtn.addEventListener('click', () => {
+                    mostrarModalProveedores();
+                });
+            }
+            
+            if (addCategoryBtn2) {
+                addCategoryBtn2.addEventListener('click', () => {
+                    mostrarModalProveedores();
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>
