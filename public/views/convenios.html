@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
@@ -35,6 +35,208 @@
             }
         }
     </script>
+    <style>
+        :root {
+            --primary-color: #f09d1f;
+            --secondary-color: #ffffff;
+            --dark-color: #121111;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #757575;
+            --danger-color: #dc2626;
+            --warning-color: #f59e0b;
+            --success-color: #10b981;
+        }
+
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Status styles */
+        .status-pendiente {
+            color: var(--warning-color);
+            font-weight: 600;
+        }
+
+        .status-pagado {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        /* Badge styles */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .badge-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .badge-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        /* Dark mode styles */
+        .dark body {
+            background-color: #1a1a1a;
+            color: #f5f5f5;
+        }
+
+        .dark .data-table th {
+            background-color: #d18b1a;
+        }
+
+        .dark .data-table {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        .dark .data-table td {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .dark .data-table tr:hover {
+            background-color: #333333;
+        }
+
+        .dark .modal-content {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+        }
+
+        .dark input,
+        .dark select,
+        .dark textarea {
+            background-color: #333333;
+            color: #f5f5f5;
+            border-color: #444444;
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 100;
+            max-width: 24rem;
+        }
+
+        .toast {
+            margin-bottom: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .toast-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .toast-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+
+        .toast-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .toast-info {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* Button animations */
+        .btn-action {
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-action:active {
+            transform: translateY(0);
+        }
+
+        /* Print styles */
+        @media print {
+
+            .main-header,
+            .main-nav,
+            .actions,
+            .search-box,
+            .btn-action,
+            .close-modal,
+            .close {
+                display: none !important;
+            }
+
+            .modal-content {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body class="bg-lightGray dark:bg-gray-900 text-dark dark:text-white">
@@ -60,8 +262,567 @@
         </nav>
     </header>
 
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <h2 class="text-2xl font-bold mb-6 border-b-2 border-primary pb-2">Gestión de Convenios</h2>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs flex mb-6 border-b border-mediumGray dark:border-gray-700">
+            <button class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative active" data-tab="empresas">
+                Empresas
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-100 transition-opacity"></span>
+            </button>
+            <button class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative" data-tab="miembros">
+                Miembros
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-0 transition-opacity"></span>
+            </button>
+        </div>
+
+        <!-- Empresas Tab -->
+        <div class="tab-content" id="empresas-tab">
+            <!-- Actions Bar -->
+            <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <button id="addEmpresaBtn"
+                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Nuevo convenio
+                </button>
+                <div class="search-box w-full sm:w-auto flex">
+                    <input type="text" id="searchEmpresa" placeholder="Buscar empresa..."
+                        class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
+                    <button
+                        class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center"
+                        id="searchEmpresaBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Empresas Table -->
+            <div class="overflow-x-auto shadow-card rounded-lg">
+                <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">Empresa</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Contacto</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Teléfono</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Email</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Descuento</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Saldo</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Sucursales</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Miembros</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empresasTableBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                        <!-- Data will be loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Miembros Tab -->
+        <div class="tab-content" id="miembros-tab" style="display: none;">
+            <!-- Actions Bar -->
+            <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <button id="addMiembroBtn"
+                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Nuevo miembro
+                </button>
+                <div class="search-box w-full sm:w-auto flex">
+                    <input type="text" id="searchMiembro" placeholder="Buscar miembro..."
+                        class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
+                    <button
+                        class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center"
+                        id="searchMiembroBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="filter-panel mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-card">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-3">
+                    <h3 class="text-lg font-medium mb-2 sm:mb-0">Filtros</h3>
+                    <button id="toggleMiembroFilters" class="text-sm text-primary hover:text-primary/80">
+                        Mostrar/Ocultar filtros
+                    </button>
+                </div>
+                <div id="miembroFiltersContainer" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                            <label for="filterEmpresa" class="block mb-1 text-sm font-medium">Empresa</label>
+                            <select id="filterEmpresa"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todas</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterSucursal" class="block mb-1 text-sm font-medium">Sucursal</label>
+                            <select id="filterSucursal"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todas</option>
+                                <!-- Se cargará dinámicamente -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterEstado" class="block mb-1 text-sm font-medium">Estado</label>
+                            <select id="filterEstado"
+                                class="w-full p-2 border border-mediumGray rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Todos</option>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="pagado">Pagado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="applyMiembroFilters"
+                            class="bg-primary hover:bg-primary/80 text-white py-1 px-3 rounded text-sm mr-2">
+                            Aplicar filtros
+                        </button>
+                        <button id="resetMiembroFilters"
+                            class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-1 px-3 rounded text-sm">
+                            Limpiar filtros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Miembros Table -->
+            <div class="overflow-x-auto shadow-card rounded-lg">
+                <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">Convenio</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Sucursal</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Fecha Registro</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">No. Referencia</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Cliente</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Método de Pago</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Facturación</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Fecha de Pago</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Estado</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Saldo</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="miembrosTableBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                        <!-- Data will be loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Empresa Modal -->
+    <div id="empresaModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="empresaModalTitle" class="text-xl font-semibold">Nueva Empresa</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="empresaForm" class="space-y-4">
+                <input type="hidden" id="empresaId">
+
+                <div class="form-group">
+                    <label for="empresaNombre" class="block mb-1 font-medium">Nombre de la empresa *</label>
+                    <input type="text" id="empresaNombre"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="empresaContacto" class="block mb-1 font-medium">Persona de contacto *</label>
+                        <input type="text" id="empresaContacto"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empresaTelefono" class="block mb-1 font-medium">Teléfono *</label>
+                        <input type="tel" id="empresaTelefono"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="empresaEmail" class="block mb-1 font-medium">Email</label>
+                        <input type="email" id="empresaEmail"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div class="form-group">
+                        <label for="empresaDescuento" class="block mb-1 font-medium">Descuento (%) *</label>
+                        <input type="number" id="empresaDescuento" min="0" max="100" value="40"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="empresaDireccion" class="block mb-1 font-medium">Dirección</label>
+                    <textarea id="empresaDireccion" rows="2"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                </div>
+
+                <!-- Sucursales -->
+                <div class="form-group">
+                    <label class="block mb-1 font-medium">Sucursales</label>
+                    <div id="sucursalesContainer" class="space-y-2 mb-2">
+                        <!-- Sucursales se agregarán dinámicamente -->
+                        <div class="sucursal-item flex items-center space-x-2">
+                            <input type="text" placeholder="Nombre de la sucursal"
+                                class="sucursal-nombre flex-grow p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        </div>
+                    </div>
+                    <button type="button" id="addSucursalBtn"
+                        class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-1 px-3 rounded flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Agregar sucursal
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label for="empresaSaldo" class="block mb-1 font-medium">Saldo/Crédito *</label>
+                    <input type="number" id="empresaSaldo" min="0" step="0.01" value="0"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="empresaNotas" class="block mb-1 font-medium">Notas adicionales</label>
+                    <textarea id="empresaNotas" rows="2"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Miembro Modal -->
+    <div id="miembroModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="miembroModalTitle" class="text-xl font-semibold">Nuevo Miembro</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="miembroForm" class="space-y-4">
+                <input type="hidden" id="miembroId">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="miembroEmpresa" class="block mb-1 font-medium">Empresa *</label>
+                        <select id="miembroEmpresa"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                            <option value="">Seleccione una empresa</option>
+                            <!-- Se cargará dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="miembroSucursal" class="block mb-1 font-medium">Sucursal *</label>
+                        <select id="miembroSucursal"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required disabled>
+                            <option value="">Seleccione una sucursal</option>
+                            <!-- Se cargará dinámicamente -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- En el modal de miembro, reemplazar el select de cliente con un div que contenga el select y un botón para crear un nuevo cliente -->
+                <div class="form-group">
+                    <label for="miembroCliente" class="block mb-1 font-medium">Cliente *</label>
+                    <div class="flex items-center">
+                        <select id="miembroCliente"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                            <option value="">Seleccione un cliente</option>
+                            <!-- Se cargará dinámicamente -->
+                        </select>
+                        <button type="button" id="addClienteFromMiembroBtn"
+                            class="ml-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-1 px-3 rounded text-sm">
+                            Nuevo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="miembroReferencia" class="block mb-1 font-medium">Número de referencia</label>
+                        <input type="text" id="miembroReferencia"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div class="form-group">
+                        <label for="miembroFechaRegistro" class="block mb-1 font-medium">Fecha de registro *</label>
+                        <input type="date" id="miembroFechaRegistro"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="miembroNotas" class="block mb-1 font-medium">Notas adicionales</label>
+                    <textarea id="miembroNotas" rows="2"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pago Modal -->
+    <div id="pagoModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="pagoModalTitle" class="text-xl font-semibold">Registrar Pago</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="pagoForm" class="space-y-4">
+                <input type="hidden" id="pagoMiembroId">
+
+                <div class="form-group bg-lightGray dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-medium mb-2">Información del miembro</h4>
+                    <p><strong>Cliente:</strong> <span id="pagoClienteNombre">-</span></p>
+                    <p><strong>Empresa:</strong> <span id="pagoEmpresaNombre">-</span></p>
+                    <p><strong>Sucursal:</strong> <span id="pagoSucursalNombre">-</span></p>
+                    <p><strong>Saldo actual:</strong> <span id="pagoSaldoActual">$0.00</span></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="pagoMonto" class="block mb-1 font-medium">Monto a pagar *</label>
+                        <input type="number" step="0.01" id="pagoMonto" min="0"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pagoFecha" class="block mb-1 font-medium">Fecha de pago *</label>
+                        <input type="date" id="pagoFecha"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="pagoMetodo" class="block mb-1 font-medium">Método de pago *</label>
+                        <select id="pagoMetodo"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta de crédito/débito</option>
+                            <option value="transferencia">Transferencia bancaria</option>
+                            <option value="cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pagoFactura" class="block mb-1 font-medium">Número de factura</label>
+                        <input type="text" id="pagoFactura"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pagoNotas" class="block mb-1 font-medium">Notas adicionales</label>
+                    <textarea id="pagoNotas" rows="2"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Registrar
+                        pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Detalle Empresa Modal -->
+    <div id="detalleEmpresaModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 id="detalleEmpresaTitle" class="text-xl font-semibold">Detalle de Empresa</h3>
+                <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Información general -->
+                <div class="bg-lightGray dark:bg-gray-700 p-5 rounded-lg">
+                    <div class="grid md:grid-cols-2 gap-x-4 gap-y-2">
+                        <div class="col-span-2">
+                            <h4 id="detalleEmpresaNombre"
+                                class="text-xl font-semibold text-primary dark:text-primary mb-3">
+                                Nombre de la Empresa
+                            </h4>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Contacto:</span> <span id="detalleEmpresaContacto">-</span>
+                            </p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Teléfono:</span> <span id="detalleEmpresaTelefono">-</span>
+                            </p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Email:</span> <span id="detalleEmpresaEmail">-</span></p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Descuento:</span> <span id="detalleEmpresaDescuento">-</span>
+                            </p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Saldo/Crédito:</span> <span
+                                    id="detalleEmpresaSaldo">$0.00</span></p>
+                        </div>
+                        <div class="col-span-2 mb-2">
+                            <p><span class="font-semibold">Dirección:</span> <span id="detalleEmpresaDireccion">-</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sucursales -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3">Sucursales</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="detalleSucursalesContainer">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Miembros -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-lg font-semibold">Miembros</h4>
+                        <button id="detalleAddMiembroBtn"
+                            class="text-sm bg-primary hover:bg-primary/80 text-white py-1 px-3 rounded flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Agregar miembro
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                            <thead>
+                                <tr>
+                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Sucursal</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Cliente</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Referencia</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Fecha Registro</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Saldo</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detalleMiembrosBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                                <!-- Se cargará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Notas -->
+                <div id="detalleNotasContainer">
+                    <h4 class="text-lg font-semibold mb-2">Notas</h4>
+                    <div class="bg-lightGray dark:bg-gray-700 p-3 rounded-lg">
+                        <p id="detalleEmpresaNotas">-</p>
+                    </div>
+                </div>
+
+                <!-- Actions Section -->
+                <div class="flex justify-end space-x-4 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button id="detalleEditEmpresaBtn"
+                        class="btn-action bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Editar empresa
+                    </button>
+                    <button id="detallePrintBtn"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Imprimir
+                    </button>
+                    <button id="detalleCloseBtn"
+                        class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-800 w-11/12 max-w-md mx-auto rounded-lg shadow-modal p-6">
+            <h3 id="confirmTitle" class="text-xl font-semibold mb-4">Confirmar acción</h3>
+            <p id="confirmMessage" class="mb-6">¿Estás seguro de que deseas realizar esta acción?</p>
+            <div class="flex justify-end space-x-2">
+                <button id="confirmCancel"
+                    class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                <button id="confirmOk"
+                    class="py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="../assets/js/check-current-user.js"></script>
     <script type="module" src="../assets/js/auth-check.js"></script>
+    <script type="module" src="../assets/js/convenios.js"></script>
 </body>
 
 </html>
