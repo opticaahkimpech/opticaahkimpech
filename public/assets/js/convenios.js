@@ -27,7 +27,7 @@ const filtrosEmpresas = {
   busqueda: "",
 }
 
-const filtrosMiembros = {
+let filtrosMiembros = {
   empresa: "",
   sucursal: "",
   estado: "",
@@ -261,6 +261,13 @@ async function loadMiembros(filters = {}) {
     return []
   }
 }
+
+// Escuchar el evento personalizado para recargar empresas y miembros
+// Escuchar el evento personalizado para recargar empresas y miembros
+window.addEventListener("miembroConvenioAgregado", async () => {
+  await loadMiembros();   // Primero actualiza la lista global de miembros
+  await loadEmpresas();   // Luego actualiza la tabla de empresas (que usa la variable miembros)
+});
 
 // Función para actualizar la tabla de empresas
 function updateEmpresasTable() {
@@ -904,6 +911,9 @@ function setupFormEvents() {
 
                   // Recargar clientes para actualizar información de convenios
                   await loadClientes()
+
+                  // Recargar empresas
+                  await loadEmpresas()
                 }
               }, 500)
             })
@@ -962,6 +972,9 @@ function setupFormEvents() {
 
         // Recargar clientes para actualizar información de convenios
         await loadClientes()
+
+        // Recargar empresas
+        await loadEmpresas()
       } catch (error) {
         console.error("Error al guardar miembro:", error)
         showToast("Error al guardar el miembro", "danger")
@@ -1750,6 +1763,9 @@ async function deleteMiembro(miembroId) {
 
     // Recargar clientes
     await loadClientes()
+
+    // Recargar empresas
+    await loadEmpresas()
 
     // Si estamos en el detalle de empresa, recargar miembros de la empresa
     if (currentEmpresaId) {
