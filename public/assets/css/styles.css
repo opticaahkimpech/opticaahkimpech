@@ -334,3 +334,7 @@ body {
   background-color: #2563eb;
   color: white;
 }
+
+#miembroCliente + input[type="text"] {
+    margin-bottom: 0.5rem;
+}
