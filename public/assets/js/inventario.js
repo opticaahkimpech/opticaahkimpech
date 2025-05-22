@@ -1,3 +1,4 @@
+import { NotificationSystem } from './notification-system.js';
 import {
   collection,
   getDocs,
@@ -26,6 +27,9 @@ let coloresArmazones = []
 // Variables para manejar colores y materiales en el formulario
 let coloresSeleccionados = []
 let materialesSeleccionados = []
+
+// Instancia del sistema de notificaciones
+let notificationSystem;
 
 // Configuración de stock
 const CONFIG = {
@@ -58,6 +62,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("Página de inventario cargada")
 
   try {
+    // Inicializar el sistema de notificaciones
+    notificationSystem = new NotificationSystem();
+    
     // Verificar y crear colecciones necesarias
     await checkAndCreateInventoryCollection()
 
@@ -92,11 +99,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Configurar eventos para administrar categorías y proveedores
     setupCategoryAndProviderEvents()
+    
+    // Configurar eventos para el botón de notificaciones
+    setupNotificationEvents();
   } catch (error) {
     console.error("Error al inicializar la página de inventario:", error)
     showToast("Error al cargar la página de inventario", "danger")
   }
 })
+
+// Función para configurar eventos de notificaciones
+function setupNotificationEvents() {
+  const notificationBell = document.getElementById('notificationBell');
+  const notificationDropdown = document.getElementById('notificationDropdown');
+
+  if (notificationBell && notificationDropdown) {
+    notificationBell.addEventListener('click', () => {
+      if (notificationDropdown.style.display === 'block') {
+        notificationDropdown.style.display = 'none';
+      } else {
+        notificationDropdown.style.display = 'block';
+        // Si estamos usando el sistema de notificaciones, actualizar la lista
+        if (notificationSystem) {
+          notificationSystem.updateNotificationList();
+        }
+      }
+    });
+
+    // Cerrar dropdown al hacer clic fuera
+    document.addEventListener('click', (e) => {
+      if (!notificationBell.contains(e.target) && !notificationDropdown.contains(e.target)) {
+        notificationDropdown.style.display = 'none';
+      }
+    });
+  }
+}
 
 // Función para mostrar notificaciones toast
 function showToast(message, type = "info") {
@@ -266,8 +303,8 @@ async function loadProveedores() {
     // Actualizar los selectores de proveedores
     const productoProveedorSelect = document.getElementById("productoProveedor")
     const armazonProveedorSelect = document.getElementById("armazonProveedor")
-    const filterProductoProveedorSelect = document.getElementById("filterProductoProveedor")
-    const filterArmazonProveedorSelect = document.getElementById("filterArmazonProveedor")
+    const filterProductoProveedorSelect = document.getElementById("filterProductoProveedorSelect")
+    const filterArmazonProveedorSelect = document.getElementById("filterArmazonProveedorSelect")
 
     if (productoProveedorSelect) {
       productoProveedorSelect.innerHTML = '<option value="">Seleccione un proveedor</option>'
@@ -1588,16 +1625,20 @@ async function loadUniqueValues() {
 // Función para verificar productos con stock bajo
 function checkLowStockItems() {
   // Verificar productos
-  const productosQuery = query(collection(db, "productos"), where("stock", "<=", CONFIG.STOCK_CRITICO_PRODUCTO))
+  const productosQuery = query(collection(db, "productos"), where("stock", "<=", CONFIG.STOCK_MINIMO_PRODUCTO))
 
   getDocs(productosQuery)
     .then((productosSnapshot) => {
       productosSnapshot.forEach((doc) => {
         const producto = doc.data()
-        if (producto.stock <= CONFIG.STOCK_CRITICO_PRODUCTO) {
-          showOutOfStockModal(producto.nombre, producto.stock, "producto", doc.id)
+        // Solo crear notificaciones, no mostrar modales
+        if (producto.stock === 0) {
+          // Verificar si ya existe una notificación para este producto
+          notificationSystem.checkProductStock(producto)
+        } else if (producto.stock <= CONFIG.STOCK_CRITICO_PRODUCTO) {
+          notificationSystem.checkProductStock(producto)
         } else if (producto.stock <= CONFIG.STOCK_MINIMO_PRODUCTO) {
-          showToast(`El producto ${producto.nombre} está bajo en stock`, "warning")
+          notificationSystem.checkProductStock(producto)
         }
       })
     })
@@ -1606,16 +1647,19 @@ function checkLowStockItems() {
     })
 
   // Verificar armazones
-  const armazonesQuery = query(collection(db, "armazones"), where("stock", "<=", CONFIG.STOCK_CRITICO_ARMAZON))
+  const armazonesQuery = query(collection(db, "armazones"), where("stock", "<=", CONFIG.STOCK_MINIMO_ARMAZON))
 
   getDocs(armazonesQuery)
     .then((armazonesSnapshot) => {
       armazonesSnapshot.forEach((doc) => {
         const armazon = doc.data()
-        if (armazon.stock <= CONFIG.STOCK_CRITICO_ARMAZON) {
-          showOutOfStockModal(armazon.nombre, armazon.stock, "armazon", doc.id)
+        // Solo crear notificaciones, no mostrar modales
+        if (armazon.stock === 0) {
+          notificationSystem.checkArmazonStock(armazon)
+        } else if (armazon.stock <= CONFIG.STOCK_CRITICO_ARMAZON) {
+          notificationSystem.checkArmazonStock(armazon)
         } else if (armazon.stock <= CONFIG.STOCK_MINIMO_ARMAZON) {
-          showToast(`El armazón ${armazon.nombre} está bajo en stock`, "warning")
+          notificationSystem.checkArmazonStock(armazon)
         }
       })
     })
