@@ -1,0 +1,17 @@
+[Error] Error de autenticación: – {code: "auth/user-not-found"}
+	(función anónima) (login.js:171)
+
+    [Error] Error de autenticación:
+Object
+
+code: "auth/user-not-found"
+
+Object prototipo
+	(función anónima) (login.js:171)
+[Error] Error de autenticación: – Object
+Object
+	(función anónima) (login.js:171)
+> Elemento seleccionado
+< <div class="login-container">…</div>
+
+1- No se actualizan los proveedores y categorias en tiempo real hasta que actualizo la pagina

@@ -291,6 +291,67 @@
             color: #f5f5f5;
         }
 
+        /* Notification dropdown */
+        .notification-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 40;
+        }
+
+        .dark .notification-dropdown {
+            background-color: #2a2a2a;
+            color: #f5f5f5;
+            border: 1px solid #444444;
+        }
+
+        .notification-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--medium-gray);
+            transition: background-color 0.2s;
+        }
+
+        .dark .notification-item {
+            border-bottom: 1px solid #444444;
+        }
+
+        .notification-item:hover {
+            background-color: var(--light-gray);
+        }
+
+        .dark .notification-item:hover {
+            background-color: #333333;
+        }
+
+        .notification-item.warning {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .notification-item.danger {
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .notification-item.info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .notification-empty {
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--dark-gray);
+        }
+
+        .dark .notification-empty {
+            color: #aaaaaa;
+        }
+
         @media print {
 
             .main-header,
@@ -330,7 +391,42 @@
 
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-6 max-w-7xl">
-        <h2 class="text-2xl font-bold mb-6 border-b-2 border-primary pb-2">Inventario</h2>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold border-b-2 border-primary pb-2">Inventario</h2>
+
+            <!-- Notification Bell -->
+            <div class="relative">
+                <button id="notificationBell"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 relative bg-gray-100 dark:bg-gray-700 p-2"
+                    type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-bell h-5 w-5">
+                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+                    </svg>
+                    <span id="notificationCount"
+                        class="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hidden">0</span>
+                </button>
+
+                <!-- Notification Dropdown -->
+                <div id="notificationDropdown" class="notification-dropdown">
+                    <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <h3 class="font-semibold">Notificaciones</h3>
+                        <button id="clearAllNotifications"
+                            class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                            Limpiar todo
+                        </button>
+                    </div>
+                    <div id="notificationList">
+                        <!-- Notifications will be loaded here -->
+                        <div class="notification-empty">
+                            No hay notificaciones
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Alerts Container -->
         <div id="alertsContainer" class="mb-4"></div>
@@ -929,7 +1025,7 @@
                 <h3 class="text-xl font-semibold">Administrar Categorías</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
             </div>
-            
+
             <div class="mb-6">
                 <h4 class="text-lg font-medium mb-2">Agregar nueva categoría</h4>
                 <div class="flex">
@@ -941,7 +1037,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse">
                     <thead>
@@ -956,7 +1052,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <div class="flex justify-end mt-6">
                 <button type="button"
                     class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cerrar</button>
@@ -972,7 +1068,7 @@
                 <h3 class="text-xl font-semibold">Administrar Proveedores</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
             </div>
-            
+
             <div class="mb-6">
                 <h4 class="text-lg font-medium mb-2">Agregar nuevo proveedor</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
@@ -983,7 +1079,6 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                     <input type="tel" id="nuevoProveedorTelefono" placeholder="Teléfono"
-                        class="p-2 border border-  placeholder="Teléfono"
                         class="p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
                     <input type="email" id="nuevoProveedorEmail" placeholder="Email"
                         class="p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
@@ -995,7 +1090,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse">
                     <thead>
@@ -1011,7 +1106,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <div class="flex justify-end mt-6">
                 <button type="button"
                     class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cerrar</button>
@@ -1027,17 +1122,17 @@
                 <h3 class="text-xl font-semibold">Editar Categoría</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
             </div>
-            
+
             <form id="editCategoriaForm" class="space-y-4">
                 <input type="hidden" id="editCategoriaId">
-                
+
                 <div class="form-group">
                     <label for="editCategoriaNombre" class="block mb-1 font-medium">Nombre *</label>
                     <input type="text" id="editCategoriaNombre"
                         class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
                         required>
                 </div>
-                
+
                 <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
                     <button type="button"
                         class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
@@ -1056,35 +1151,35 @@
                 <h3 class="text-xl font-semibold">Editar Proveedor</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
             </div>
-            
+
             <form id="editProveedorForm" class="space-y-4">
                 <input type="hidden" id="editProveedorId">
-                
+
                 <div class="form-group">
                     <label for="editProveedorNombre" class="block mb-1 font-medium">Nombre *</label>
                     <input type="text" id="editProveedorNombre"
                         class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
                         required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="editProveedorContacto" class="block mb-1 font-medium">Contacto</label>
                     <input type="text" id="editProveedorContacto"
                         class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="editProveedorTelefono" class="block mb-1 font-medium">Teléfono</label>
                     <input type="tel" id="editProveedorTelefono"
                         class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="editProveedorEmail" class="block mb-1 font-medium">Email</label>
                     <input type="email" id="editProveedorEmail"
                         class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
                 </div>
-                
+
                 <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
                     <button type="button"
                         class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
@@ -1099,179 +1194,7 @@
     <script type="module" src="../assets/js/check-current-user.js"></script>
     <script type="module" src="../assets/js/auth-check.js"></script>
     <script type="module" src="../assets/js/inventario.js"></script>
-    
-    <!-- Script para la generación de códigos y gestión de categorías/proveedores -->
-    <script>
-        // Función para generar código automático basado en categoría
-        async function generarCodigoProducto(categoriaId) {
-            // Obtener información de la categoría
-            try {
-                const response = await fetch(`http://localhost:3000/api/categorias/${categoriaId}`);
-                const categoria = await response.json();
-                
-                // Obtener prefijo según la categoría
-                let prefijo = '';
-                switch (categoria.nombre.toLowerCase()) {
-                    case 'armazones':
-                        prefijo = 'ARM';
-                        break;
-                    case 'lentes de contacto':
-                        prefijo = 'CONT';
-                        break;
-                    case 'solares':
-                        prefijo = 'SOL';
-                        break;
-                    case 'accesorios':
-                        prefijo = 'ACC';
-                        break;
-                    case 'limpieza':
-                        prefijo = 'LIMP';
-                        break;
-                    default:
-                        // Usar las primeras 4 letras de la categoría
-                        prefijo = categoria.nombre.substring(0, 4).toUpperCase();
-                }
-                
-                // Buscar el último código con ese prefijo
-                const ultimoCodigoResponse = await fetch(`http://localhost:3000/api/productos/ultimo-codigo?prefijo=${prefijo}`);
-                const data = await ultimoCodigoResponse.json();
-                
-                let secuencia = 1;
-                if (data && data.ultimoCodigo) {
-                    // Extraer la secuencia numérica del último código
-                    const match = data.ultimoCodigo.match(/\d+$/);
-                    if (match) {
-                        secuencia = parseInt(match[0]) + 1;
-                    }
-                }
-                
-                // Formatear la secuencia con ceros a la izquierda (3 dígitos)
-                const secuenciaFormateada = secuencia.toString().padStart(3, '0');
-                
-                return `${prefijo}${secuenciaFormateada}`;
-            } catch (error) {
-                console.error('Error al generar código:', error);
-                
-                // Generar un código alternativo basado en fecha
-                const hoy = new Date();
-                const prefijo = 'PROD';
-                const fechaStr = (hoy.getMonth() + 1).toString().padStart(2, '0') + 
-                                hoy.getDate().toString().padStart(2, '0');
-                const secuencia = Math.floor(Math.random() * 999).toString().padStart(3, '0');
-                
-                return `${prefijo}${fechaStr}${secuencia}`;
-            }
-        }
-
-        // Configurar eventos cuando el DOM esté cargado
-        document.addEventListener('DOMContentLoaded', function() {
-            // Botones para generar códigos
-            const generateProductCodeBtn = document.getElementById('generateProductCodeBtn');
-            if (generateProductCodeBtn) {
-                generateProductCodeBtn.addEventListener('click', async () => {
-                    const categoriaSelect = document.getElementById('productoCategoria');
-                    if (categoriaSelect && categoriaSelect.value) {
-                        const codigo = await generarCodigoProducto(categoriaSelect.value);
-                        document.getElementById('productoCodigo').value = codigo;
-                    } else {
-                        alert('Por favor, seleccione una categoría primero');
-                    }
-                });
-            }
-
-            const generateFrameCodeBtn = document.getElementById('generateFrameCodeBtn');
-            if (generateFrameCodeBtn) {
-                generateFrameCodeBtn.addEventListener('click', async () => {
-                    // Buscar la categoría de armazones o generar un código genérico
-                    try {
-                        const response = await fetch('http://localhost:3000/api/categorias');
-                        const categorias = await response.json();
-                        
-                        const armazonesCategoria = categorias.find(cat => 
-                            cat.nombre.toLowerCase() === 'armazones');
-                        
-                        if (armazonesCategoria) {
-                            const codigo = await generarCodigoProducto(armazonesCategoria.id);
-                            document.getElementById('armazonCodigo').value = codigo;
-                        } else {
-                            // Generar código genérico para armazones
-                            const hoy = new Date();
-                            const prefijo = 'ARM';
-                            const fechaStr = (hoy.getMonth() + 1).toString().padStart(2, '0') + 
-                                            hoy.getDate().toString().padStart(2, '0');
-                            const secuencia = Math.floor(Math.random() * 999).toString().padStart(3, '0');
-                            
-                            document.getElementById('armazonCodigo').value = `${prefijo}${fechaStr}${secuencia}`;
-                        }
-                    } catch (error) {
-                        console.error('Error al generar código para armazón:', error);
-                        
-                        // Generar código genérico para armazones en caso de error
-                        const hoy = new Date();
-                        const prefijo = 'ARM';
-                        const fechaStr = (hoy.getMonth() + 1).toString().padStart(2, '0') + 
-                                        hoy.getDate().toString().padStart(2, '0');
-                        const secuencia = Math.floor(Math.random() * 999).toString().padStart(3, '0');
-                        
-                        document.getElementById('armazonCodigo').value = `${prefijo}${fechaStr}${secuencia}`;
-                    }
-                });
-            }
-
-            // Botones para administrar categorías
-            const manageCategoriesBtn = document.getElementById('manageCategoriesBtn');
-            const manageCategoriesBtn2 = document.getElementById('manageCategoriesBtn2');
-            const addCategoryBtn = document.getElementById('addCategoryBtn');
-            const addCategoryBtn2 = document.getElementById('addProviderBtn2');
-            
-            if (manageCategoriesBtn) {
-                manageCategoriesBtn.addEventListener('click', () => {
-                    mostrarModalCategorias();
-                });
-            }
-            
-            if (manageCategoriesBtn2) {
-                manageCategoriesBtn2.addEventListener('click', () => {
-                    mostrarModalCategorias();
-                });
-            }
-            
-            if (addCategoryBtn) {
-                addCategoryBtn.addEventListener('click', () => {
-                    mostrarModalCategorias();
-                });
-            }
-
-            // Botones para administrar proveedores
-            const manageProvidersBtn = document.getElementById('manageProvidersBtn');
-            const manageProvidersBtn2 = document.getElementById('manageProvidersBtn2');
-            const addProviderBtn = document.getElementById('addProviderBtn');
-            
-            if (manageProvidersBtn) {
-                manageProvidersBtn.addEventListener('click', () => {
-                    mostrarModalProveedores();
-                });
-            }
-            
-            if (manageProvidersBtn2) {
-                manageProvidersBtn2.addEventListener('click', () => {
-                    mostrarModalProveedores();
-                });
-            }
-            
-            if (addProviderBtn) {
-                addProviderBtn.addEventListener('click', () => {
-                    mostrarModalProveedores();
-                });
-            }
-            
-            if (addCategoryBtn2) {
-                addCategoryBtn2.addEventListener('click', () => {
-                    mostrarModalProveedores();
-                });
-            }
-        });
-    </script>
+    <script src="../assets/js/genAndControlForms.js"></script>
 </body>
 
 </html>

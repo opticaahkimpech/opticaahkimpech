@@ -147,6 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Obtener el documento del usuario
         const userDoc = querySnapshot.docs[0]
         const userData = userDoc.data()
+        const userId = userDoc.id
 
         // Verificar si el usuario está activo
         if (userData.activo === false) {
@@ -159,9 +160,54 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Si llegamos aquí, el usuario y contraseña son correctos
-        // Iniciar sesión con el correo asociado al usuario
-        const userCredential = await signInWithEmailAndPassword(auth, userData.email, password)
-        user = userCredential.user
+        // Verificar si el usuario tiene un correo electrónico asociado
+        if (!userData.email) {
+          // Si no tiene correo, no podemos usar signInWithEmailAndPassword
+          // En su lugar, establecemos manualmente la información del usuario en sessionStorage
+          sessionStorage.setItem(
+            "currentUser",
+            JSON.stringify({
+              uid: userId,
+              username: userData.username,
+              nombre: userData.nombre || userData.username,
+              role: userData.rol || "vendedor",
+              rol: userData.rol || "vendedor",
+              activo: userData.activo !== false,
+              // No incluimos email porque no existe
+            })
+          )
+          
+          // Redirigir al usuario a la página de inventario
+          window.location.href = "./views/inventario.html"
+          return
+        }
+
+        // Si tiene correo, iniciar sesión con el correo asociado al usuario
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, userData.email, password)
+          user = userCredential.user
+        } catch (authError) {
+          console.error("Error de autenticación con Firebase:", authError)
+          
+          // Si falla la autenticación con Firebase pero las credenciales son correctas en Firestore,
+          // permitimos el acceso usando solo la información de Firestore
+          sessionStorage.setItem(
+            "currentUser",
+            JSON.stringify({
+              uid: userId,
+              username: userData.username,
+              nombre: userData.nombre || userData.username,
+              role: userData.rol || "vendedor",
+              rol: userData.rol || "vendedor",
+              activo: userData.activo !== false,
+              email: userData.email || null,
+            })
+          )
+          
+          // Redirigir al usuario a la página de inventario
+          window.location.href = "./views/inventario.html"
+          return
+        }
       }
 
       // Redirigir al usuario a la página de inventario

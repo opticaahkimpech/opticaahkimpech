@@ -12,7 +12,10 @@ import {
   orderBy,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 
-import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 
 import { auth, db } from "./firebase-config.js"
 
@@ -144,6 +147,9 @@ function setupModalEvents() {
           passwordField.required = true
           passwordLabel.style.display = "block"
         }
+        
+        // Mostrar u ocultar campo de email según el rol seleccionado
+        updateEmailFieldVisibility();
       }
     })
   }
@@ -168,11 +174,53 @@ function setupModalEvents() {
   })
 }
 
+// Función para actualizar la visibilidad del campo de email según el rol
+function updateEmailFieldVisibility() {
+  const rolSelect = document.getElementById("rol");
+  const emailField = document.getElementById("email");
+  const emailLabel = document.querySelector('label[for="email"]');
+  
+  if (rolSelect && emailField && emailLabel) {
+    const isAdmin = rolSelect.value === "admin";
+    
+    // Mostrar u ocultar campo de email según el rol
+    emailField.style.display = isAdmin ? "block" : "none";
+    emailLabel.style.display = isAdmin ? "block" : "none";
+    emailField.required = isAdmin;
+    
+    // Si no es admin, limpiar el campo de email
+    if (!isAdmin) {
+      emailField.value = "";
+    }
+  }
+}
+
 // Configurar eventos para los formularios
 function setupFormEvents() {
   // Configurar formulario de usuario
   const userForm = document.getElementById("userForm")
   if (userForm) {
+    // Agregar campo de email al formulario si no existe
+    if (!document.getElementById("email")) {
+      const rolField = document.getElementById("rol").parentNode;
+      const emailGroup = document.createElement("div");
+      emailGroup.className = "form-group";
+      emailGroup.innerHTML = `
+        <label for="email">Correo Electrónico</label>
+        <input type="email" id="email" name="email" class="form-control">
+      `;
+      rolField.parentNode.insertBefore(emailGroup, rolField.nextSibling);
+    }
+    
+    // Configurar evento para cambio de rol
+    const rolSelect = document.getElementById("rol");
+    if (rolSelect) {
+      rolSelect.addEventListener("change", updateEmailFieldVisibility);
+    }
+    
+    // Inicializar visibilidad del campo de email
+    updateEmailFieldVisibility();
+    
     userForm.addEventListener("submit", async (e) => {
       e.preventDefault()
 
@@ -183,10 +231,17 @@ function setupFormEvents() {
         const nombre = document.getElementById("nombre").value
         const rol = document.getElementById("rol").value
         const activo = document.getElementById("activo").value === "1"
+        const email = document.getElementById("email").value
 
         // Validar campos requeridos
         if (!username || (!userId && !password) || !nombre) {
           showToast("Por favor, complete los campos requeridos", "warning")
+          return
+        }
+        
+        // Validar email para administradores
+        if (rol === "admin" && !email) {
+          showToast("El correo electrónico es requerido para administradores", "warning")
           return
         }
 
@@ -204,25 +259,63 @@ function setupFormEvents() {
 
         if (!userId) {
           // Crear nuevo usuario
+          let newUserId;
+          
+          if (rol === "admin") {
+            // Para administradores, crear usuario en Firebase Auth
+            try {
+              // Crear usuario en Firebase Authentication
+              const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+              newUserId = userCredential.user.uid
+              
+              // Verificar que el usuario se creó correctamente intentando iniciar sesión
+              // Esto es opcional, pero puede ayudar a detectar problemas
+              try {
+                // Cerrar sesión actual (si hay)
+                if (auth.currentUser) {
+                  await auth.signOut()
+                }
+                
+                // Intentar iniciar sesión con las nuevas credenciales
+                await signInWithEmailAndPassword(auth, email, password)
+                
+                // Si llegamos aquí, la autenticación fue exitosa
+                console.log("Verificación de autenticación exitosa para el nuevo administrador")
+                
+                // Volver a cerrar sesión para no interferir con la sesión actual
+                await auth.signOut()
+              } catch (verifyError) {
+                console.error("Error al verificar credenciales del nuevo administrador:", verifyError)
+                // Continuamos de todos modos, ya que el usuario se creó
+              }
+            } catch (authError) {
+              console.error("Error al crear usuario en Firebase Auth:", authError)
+              showToast("Error al crear usuario: " + authError.message, "danger")
+              return
+            }
+          } else {
+            // Para empleados, generar un ID único
+            newUserId = generateUniqueId()
+          }
 
-          // Generar un correo electrónico único para Firebase Auth
-          const email = `${username.toLowerCase()}@ahkimpech.com`
-
-          // Crear usuario en Firebase Auth
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-          const newUserId = userCredential.user.uid
-
-          // Crear objeto de usuario
+          // Crear objeto de usuario para Firestore
           const userData = {
-            uid: newUserId,
             username,
-            email,
-            password, // En un sistema real, NO almacenar contraseñas en texto plano
             nombre,
             rol,
             activo,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+          }
+          
+          // Agregar email solo para administradores
+          if (rol === "admin") {
+            userData.email = email
+          }
+          
+          // Agregar contraseña solo para empleados (no para administradores)
+          if (rol !== "admin") {
+            userData.password = password
           }
 
           // Guardar en Firestore
@@ -240,8 +333,17 @@ function setupFormEvents() {
           }
 
           const userData = userDoc.data()
+          const isAdmin = userData.rol === "admin"
+          const changingToAdmin = rol === "admin" && !isAdmin
+          const changingFromAdmin = rol !== "admin" && isAdmin
 
-          // Actualizar datos
+          // Validar email si se está cambiando a admin
+          if (changingToAdmin && !email) {
+            showToast("El correo electrónico es requerido para administradores", "warning")
+            return
+          }
+
+          // Actualizar datos básicos
           const updateData = {
             username,
             nombre,
@@ -250,13 +352,29 @@ function setupFormEvents() {
             updatedAt: serverTimestamp(),
           }
 
-          // Si se proporcionó una nueva contraseña, actualizarla
-          if (password) {
-            updateData.password = password
+          // Actualizar email solo para administradores
+          if (rol === "admin") {
+            updateData.email = email
+          } else if (userData.email) {
+            // Si se cambia de admin a empleado, mantener el email por compatibilidad
+            updateData.email = userData.email
+          }
 
-            // Actualizar contraseña en Firebase Auth
-            // Esto normalmente requeriría reautenticación, pero como es un admin quien lo hace,
-            // podríamos usar funciones de Firebase Admin SDK en un backend real
+          // Si se proporcionó una nueva contraseña
+          if (password) {
+            // Para empleados, actualizar contraseña en Firestore
+            if (rol !== "admin") {
+              updateData.password = password
+            }
+            
+            // Para administradores, no guardamos la contraseña en Firestore
+            // Aquí deberíamos actualizar la contraseña en Firebase Auth
+            // Pero esto requiere reautenticación o usar Firebase Admin SDK
+          }
+          
+          // Si está cambiando de admin a empleado, necesitamos agregar contraseña
+          if (changingFromAdmin && password) {
+            updateData.password = password
           }
 
           // Actualizar en Firestore
@@ -276,6 +394,12 @@ function setupFormEvents() {
       }
     })
   }
+}
+
+// Función para generar un ID único para empleados
+function generateUniqueId() {
+  // Generar un ID único con prefijo 'emp_' seguido de timestamp y caracteres aleatorios
+  return 'emp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
 // Configurar eventos para las búsquedas
@@ -433,6 +557,12 @@ async function editUser(userId) {
       document.getElementById("nombre").value = userData.nombre || ""
       document.getElementById("rol").value = userData.rol || "vendedor"
       document.getElementById("activo").value = userData.activo ? "1" : "0"
+      
+      // Llenar campo de email si existe
+      const emailField = document.getElementById("email")
+      if (emailField) {
+        emailField.value = userData.email || ""
+      }
 
       // Ocultar campo de contraseña (opcional en edición)
       const passwordField = document.getElementById("password")
@@ -442,6 +572,9 @@ async function editUser(userId) {
         passwordField.required = false
         passwordField.placeholder = "Dejar en blanco para mantener la actual"
       }
+      
+      // Actualizar visibilidad del campo de email
+      updateEmailFieldVisibility();
     }
   } catch (error) {
     console.error("Error al obtener usuario:", error)
@@ -466,13 +599,26 @@ async function deleteUser(userId) {
       return
     }
 
-    // Eliminar usuario de Firestore
-    await deleteDoc(doc(db, "usuarios", userId))
-
-    // También deberíamos eliminar el usuario de Firebase Auth
-    // Esto normalmente requeriría usar Firebase Admin SDK en un backend
-
-    showToast("Usuario eliminado correctamente", "success")
+    // Obtener datos del usuario para verificar si es admin
+    const userRef = doc(db, "usuarios", userId)
+    const userDoc = await getDoc(userRef)
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data()
+      
+      // Eliminar usuario de Firestore
+      await deleteDoc(userRef)
+      
+      // Si es admin, deberíamos eliminar también de Firebase Auth
+      // Esto normalmente requeriría usar Firebase Admin SDK en un backend
+      if (userData.rol === "admin") {
+        console.warn("El usuario eliminado era un administrador. La cuenta en Firebase Authentication debe eliminarse manualmente o mediante Firebase Admin SDK.")
+      }
+      
+      showToast("Usuario eliminado correctamente", "success")
+    } else {
+      showToast("Usuario no encontrado", "warning")
+    }
 
     // Recargar usuarios
     await loadUsers()
