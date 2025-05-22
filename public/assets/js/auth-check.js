@@ -15,64 +15,19 @@ import { auth, db } from "./firebase-config.js"
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("Verificando autenticación...")
 
-  // Verificar si hay un usuario autenticado
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      // Si no hay usuario autenticado, redirigir al login
-      console.log("No hay usuario autenticado, redirigiendo al login...")
-      window.location.href = "../../index.html"
-      return
-    }
+  // Configurar el botón de cerrar sesión PRIMERO
+  setupLogoutButton();
 
-    console.log("Usuario autenticado:", user.email)
+  // Cargar información del usuario desde sessionStorage
+  let currentUser = JSON.parse(sessionStorage.getItem("currentUser"))
+
+  // Si hay un usuario en sessionStorage, consideramos que está autenticado
+  if (currentUser) {
+    console.log("Usuario encontrado en sessionStorage:", currentUser)
 
     try {
       // Verificar si existe la colección de inventario
       await checkAndCreateInventoryCollection()
-
-      // Cargar información del usuario desde sessionStorage
-      let currentUser = JSON.parse(sessionStorage.getItem("currentUser"))
-
-      if (!currentUser) {
-        // Si no hay información en sessionStorage, intentar obtenerla de Firestore
-        console.log("Obteniendo información del usuario desde Firestore...")
-        const userDocRef = doc(db, "usuarios", user.uid)
-        const userDocSnap = await getDoc(userDocRef)
-
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data()
-          console.log("Datos del usuario obtenidos de Firestore:", userData)
-
-          // Verificar si el usuario está activo
-          if (userData.activo === false) {
-            console.error("Usuario inactivo, cerrando sesión...")
-            await signOut(auth)
-            window.location.href = "../../index.html?error=inactive"
-            return
-          }
-
-          // Asegurarse de que el rol esté correctamente almacenado
-          const userRole = userData.rol || userData.role || "vendedor" // Valor por defecto si no existe
-
-          currentUser = {
-            uid: user.uid,
-            email: userData.email,
-            username: userData.username,
-            nombre: userData.nombre,
-            role: userRole, // Usar siempre la misma propiedad 'role'
-            rol: userRole, // Mantener 'rol' para compatibilidad
-            activo: userData.activo !== false, // Asegurar que activo sea booleano
-          }
-
-          sessionStorage.setItem("currentUser", JSON.stringify(currentUser))
-          console.log("Usuario guardado en sessionStorage:", currentUser)
-        } else {
-          console.error("No se encontró información del usuario en la base de datos")
-          await signOut(auth)
-          window.location.href = "../../index.html"
-          return
-        }
-      }
 
       // Verificar si el usuario está activo
       if (currentUser.activo === false) {
@@ -83,22 +38,97 @@ document.addEventListener("DOMContentLoaded", async () => {
         return
       }
 
-      // Usar la información del usuario desde sessionStorage
-      console.log("Usando información del usuario desde sessionStorage:", currentUser)
-      console.log("Rol del usuario:", currentUser.role || currentUser.rol)
+      // Verificar si el usuario existe en Firestore
+      const userDocRef = doc(db, "usuarios", currentUser.uid)
+      const userDocSnap = await getDoc(userDocRef)
 
-      // Forzar la actualización de los campos role y rol
-      if (!currentUser.role && currentUser.rol) {
-        currentUser.role = currentUser.rol
-        sessionStorage.setItem("currentUser", JSON.stringify(currentUser))
-      } else if (!currentUser.rol && currentUser.role) {
-        currentUser.rol = currentUser.role
-        sessionStorage.setItem("currentUser", JSON.stringify(currentUser))
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data()
+
+        // Verificar si el usuario está activo en Firestore
+        if (userData.activo === false) {
+          console.error("Usuario inactivo en Firestore, cerrando sesión...")
+          await signOut(auth)
+          sessionStorage.removeItem("currentUser")
+          window.location.href = "../../index.html?error=inactive"
+          return
+        }
+
+        // Actualizar datos del usuario si es necesario
+        const userRole = userData.rol || userData.role || "vendedor"
+
+        if (currentUser.role !== userRole || currentUser.rol !== userRole) {
+          currentUser.role = userRole
+          currentUser.rol = userRole
+          sessionStorage.setItem("currentUser", JSON.stringify(currentUser))
+        }
+      } else {
+        console.warn("Usuario no encontrado en Firestore pero existe en sessionStorage")
       }
 
       setupUserInterface(currentUser)
+      checkPageAccess()
+      return
+    } catch (error) {
+      console.error("Error al verificar usuario desde sessionStorage:", error)
+    }
+  }
 
-      // Verificar acceso a la página actual según el rol
+  // Si no hay usuario en sessionStorage o hubo un error, verificar con Firebase Auth
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      // Si no hay usuario autenticado, redirigir al login
+      console.log("No hay usuario autenticado, redirigiendo al login...")
+      window.location.href = "../../index.html"
+      return
+    }
+
+    console.log("Usuario autenticado con Firebase:", user.email)
+
+    try {
+      // Verificar si existe la colección de inventario
+      await checkAndCreateInventoryCollection()
+
+      // Si no hay información en sessionStorage, intentar obtenerla de Firestore
+      console.log("Obteniendo información del usuario desde Firestore...")
+      const userDocRef = doc(db, "usuarios", user.uid)
+      const userDocSnap = await getDoc(userDocRef)
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data()
+        console.log("Datos del usuario obtenidos de Firestore:", userData)
+
+        // Verificar si el usuario está activo
+        if (userData.activo === false) {
+          console.error("Usuario inactivo, cerrando sesión...")
+          await signOut(auth)
+          window.location.href = "../../index.html?error=inactive"
+          return
+        }
+
+        // Asegurarse de que el rol esté correctamente almacenado
+        const userRole = userData.rol || userData.role || "vendedor" // Valor por defecto si no existe
+
+        currentUser = {
+          uid: user.uid,
+          email: userData.email,
+          username: userData.username,
+          nombre: userData.nombre,
+          role: userRole, // Usar siempre la misma propiedad 'role'
+          rol: userRole, // Mantener 'rol' para compatibilidad
+          activo: userData.activo !== false, // Asegurar que activo sea booleano
+        }
+
+        sessionStorage.setItem("currentUser", JSON.stringify(currentUser))
+        console.log("Usuario guardado en sessionStorage:", currentUser)
+      } else {
+        console.error("No se encontró información del usuario en la base de datos")
+        await signOut(auth)
+        window.location.href = "../../index.html"
+        return
+      }
+
+      setupUserInterface(currentUser)
       checkPageAccess()
     } catch (error) {
       console.error("Error al verificar usuario o colecciones:", error)
@@ -106,23 +136,55 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.location.href = "../../index.html"
     }
   })
-
-  // Configurar el botón de cerrar sesión
-  const logoutBtn = document.getElementById("logoutBtn")
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-      try {
-        await signOut(auth)
-        // Limpiar sessionStorage
-        sessionStorage.removeItem("currentUser")
-        // Redirigir al login
-        window.location.href = "../../index.html"
-      } catch (error) {
-        console.error("Error al cerrar sesión:", error)
-      }
-    })
-  }
 })
+
+// Función para configurar el botón de cerrar sesión
+function setupLogoutButton() {
+  console.log("Configurando botón de cerrar sesión...");
+  
+  // Buscar el botón de cerrar sesión
+  const logoutBtn = document.getElementById("logoutBtn");
+  
+  if (logoutBtn) {
+    console.log("Botón de cerrar sesión encontrado, configurando evento...");
+    
+    // Eliminar cualquier evento previo para evitar duplicados
+    logoutBtn.removeEventListener("click", handleLogout);
+    
+    // Agregar el nuevo evento
+    logoutBtn.addEventListener("click", handleLogout);
+  } else {
+    console.warn("No se encontró el botón de cerrar sesión");
+  }
+}
+
+// Función para manejar el cierre de sesión
+async function handleLogout(event) {
+  console.log("Evento de cierre de sesión activado");
+  event.preventDefault();
+  
+  try {
+    console.log("Intentando cerrar sesión...");
+    await signOut(auth);
+    console.log("Sesión cerrada en Firebase Auth");
+    
+    // Limpiar sessionStorage
+    sessionStorage.removeItem("currentUser");
+    console.log("Usuario eliminado de sessionStorage");
+    
+    // Redirigir al login
+    console.log("Redirigiendo a la página de inicio de sesión...");
+    window.location.href = "../../index.html";
+  } catch (error) {
+    console.error("Error al cerrar sesión:", error);
+    
+    // Asegurarse de limpiar sessionStorage incluso si falla el signOut
+    sessionStorage.removeItem("currentUser");
+    
+    // Redirigir al login de todos modos
+    window.location.href = "../../index.html";
+  }
+}
 
 // Función para verificar y crear la colección de inventario si no existe
 export async function checkAndCreateInventoryCollection() {
