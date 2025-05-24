@@ -12,9 +12,11 @@ import {
   where,
   orderBy,
   limit,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 
 import { db } from "./firebase-config.js"
+import { CONFIG } from "./config.js"
 import { checkAndCreateInventoryCollection } from "./auth-check.js"
 
 // Variables globales para almacenar datos
@@ -30,14 +32,6 @@ let materialesSeleccionados = []
 
 // Instancia del sistema de notificaciones
 let notificationSystem;
-
-// Configuración de stock
-const CONFIG = {
-  STOCK_MINIMO_PRODUCTO: 5,
-  STOCK_CRITICO_PRODUCTO: 2,
-  STOCK_MINIMO_ARMAZON: 3,
-  STOCK_CRITICO_ARMAZON: 1,
-}
 
 // Filtros activos
 const filtrosProductos = {
@@ -64,7 +58,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     // Inicializar el sistema de notificaciones
     notificationSystem = new NotificationSystem();
-    
+
+    await initializeAlertFlags()
+
+
     // Verificar y crear colecciones necesarias
     await checkAndCreateInventoryCollection()
 
@@ -99,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Configurar eventos para administrar categorías y proveedores
     setupCategoryAndProviderEvents()
-    
+
     // Configurar eventos para el botón de notificaciones
     setupNotificationEvents();
   } catch (error) {
@@ -1623,49 +1620,144 @@ async function loadUniqueValues() {
 }
 
 // Función para verificar productos con stock bajo
-function checkLowStockItems() {
-  // Verificar productos
-  const productosQuery = query(collection(db, "productos"), where("stock", "<=", CONFIG.STOCK_MINIMO_PRODUCTO))
+async function checkLowStockItems() {
+  try {
+    // Verificar productos
+    const productosQuery = query(collection(db, "productos"), where("stock", "<=", CONFIG.STOCK_MINIMO_PRODUCTO))
 
-  getDocs(productosQuery)
-    .then((productosSnapshot) => {
-      productosSnapshot.forEach((doc) => {
-        const producto = doc.data()
-        // Solo crear notificaciones, no mostrar modales
-        if (producto.stock === 0) {
-          // Verificar si ya existe una notificación para este producto
-          notificationSystem.checkProductStock(producto)
-        } else if (producto.stock <= CONFIG.STOCK_CRITICO_PRODUCTO) {
-          notificationSystem.checkProductStock(producto)
-        } else if (producto.stock <= CONFIG.STOCK_MINIMO_PRODUCTO) {
-          notificationSystem.checkProductStock(producto)
+    const productosSnapshot = await getDocs(productosQuery)
+
+    productosSnapshot.forEach((doc) => {
+      const producto = { id: doc.id, ...doc.data() }
+
+      // Verificar si ya existe una notificación para este producto
+      notificationSystem.checkProductStock(producto)
+    })
+
+    // Verificar armazones
+    const armazonesQuery = query(collection(db, "armazones"), where("stock", "<=", CONFIG.STOCK_MINIMO_ARMAZON))
+
+    const armazonesSnapshot = await getDocs(armazonesQuery)
+
+    armazonesSnapshot.forEach((doc) => {
+      const armazon = { id: doc.id, ...doc.data() }
+
+      // Verificar si ya existe una notificación para este armazón
+      notificationSystem.checkArmazonStock(armazon)
+    })
+
+    console.log("Verificación de stock bajo completada")
+  } catch (error) {
+    console.error("Error al verificar productos con stock bajo:", error)
+  }
+}
+
+async function initializeAlertFlags() {
+  try {
+    // Inicializar flags en productos
+    const productosQuery = query(collection(db, "productos"))
+    const productosSnapshot = await getDocs(productosQuery)
+
+    const productBatch = writeBatch(db)
+
+    productosSnapshot.forEach((docSnapshot) => {
+      const producto = docSnapshot.data()
+      const docRef = doc(db, "productos", docSnapshot.id)
+
+      // Solo actualizar si no tienen los flags definidos
+      if (
+        producto.alerta_stock_bajo === undefined ||
+        producto.alerta_stock_critico === undefined ||
+        producto.alerta_stock_agotado === undefined
+      ) {
+        const updateData = {
+          alerta_stock_bajo: false,
+          alerta_stock_critico: false,
+          alerta_stock_agotado: false,
         }
-      })
-    })
-    .catch((error) => {
-      console.error("Error al verificar productos con stock bajo:", error)
+
+        productBatch.update(docRef, updateData)
+      }
     })
 
-  // Verificar armazones
-  const armazonesQuery = query(collection(db, "armazones"), where("stock", "<=", CONFIG.STOCK_MINIMO_ARMAZON))
+    await productBatch.commit()
 
-  getDocs(armazonesQuery)
-    .then((armazonesSnapshot) => {
-      armazonesSnapshot.forEach((doc) => {
-        const armazon = doc.data()
-        // Solo crear notificaciones, no mostrar modales
-        if (armazon.stock === 0) {
-          notificationSystem.checkArmazonStock(armazon)
-        } else if (armazon.stock <= CONFIG.STOCK_CRITICO_ARMAZON) {
-          notificationSystem.checkArmazonStock(armazon)
-        } else if (armazon.stock <= CONFIG.STOCK_MINIMO_ARMAZON) {
-          notificationSystem.checkArmazonStock(armazon)
+    // Inicializar flags en armazones
+    const armazonesQuery = query(collection(db, "armazones"))
+    const armazonesSnapshot = await getDocs(armazonesQuery)
+
+    const armazonBatch = writeBatch(db)
+
+    armazonesSnapshot.forEach((docSnapshot) => {
+      const armazon = docSnapshot.data()
+      const docRef = doc(db, "armazones", docSnapshot.id)
+
+      // Solo actualizar si no tienen los flags definidos
+      if (
+        armazon.alerta_stock_bajo === undefined ||
+        armazon.alerta_stock_critico === undefined ||
+        armazon.alerta_stock_agotado === undefined
+      ) {
+        const updateData = {
+          alerta_stock_bajo: false,
+          alerta_stock_critico: false,
+          alerta_stock_agotado: false,
         }
-      })
+
+        armazonBatch.update(docRef, updateData)
+      }
     })
-    .catch((error) => {
-      console.error("Error al verificar armazones con stock bajo:", error)
-    })
+
+    await armazonBatch.commit()
+
+    console.log("Inicialización de flags de alerta completada")
+  } catch (error) {
+    console.error("Error al inicializar flags de alerta:", error)
+  }
+}
+
+async function cleanupOrphanedNotifications() {
+  try {
+    // Buscar notificaciones de productos que ya no existen
+    const productNotificationsQuery = query(collection(db, "notifications"), where("itemType", "==", "producto"))
+
+    const productNotificationsSnapshot = await getDocs(productNotificationsQuery)
+
+    for (const notificationDoc of productNotificationsSnapshot.docs) {
+      const notification = notificationDoc.data()
+
+      // Verificar si el producto aún existe
+      const productDoc = await getDoc(doc(db, "productos", notification.itemId))
+
+      if (!productDoc.exists()) {
+        // El producto ya no existe, eliminar la notificación
+        await deleteDoc(doc(db, "notifications", notificationDoc.id))
+        console.log(`Notificación huérfana eliminada: ${notificationDoc.id}`)
+      }
+    }
+
+    // Buscar notificaciones de armazones que ya no existen
+    const frameNotificationsQuery = query(collection(db, "notifications"), where("itemType", "==", "armazon"))
+
+    const frameNotificationsSnapshot = await getDocs(frameNotificationsQuery)
+
+    for (const notificationDoc of frameNotificationsSnapshot.docs) {
+      const notification = notificationDoc.data()
+
+      // Verificar si el armazón aún existe
+      const frameDoc = await getDoc(doc(db, "armazones", notification.itemId))
+
+      if (!frameDoc.exists()) {
+        // El armazón ya no existe, eliminar la notificación
+        await deleteDoc(doc(db, "notifications", notificationDoc.id))
+        console.log(`Notificación huérfana eliminada: ${notificationDoc.id}`)
+      }
+    }
+
+    console.log("Limpieza de notificaciones huérfanas completada")
+  } catch (error) {
+    console.error("Error al limpiar notificaciones huérfanas:", error)
+  }
 }
 
 // Función para mostrar el modal de producto agotado
@@ -2004,3 +2096,5 @@ function actualizarMaterialesUI() {
     materialesContainer.appendChild(materialElement)
   })
 }
+
+export { checkLowStockItems, cleanupOrphanedNotifications, initializeAlertFlags }

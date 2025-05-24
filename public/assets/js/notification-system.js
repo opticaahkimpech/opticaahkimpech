@@ -9,6 +9,7 @@ import {
   updateDoc,
   addDoc,
   getDocs,
+  getDoc,
   orderBy,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
@@ -136,6 +137,11 @@ class NotificationSystem {
 
   // Verificar stock de producto
   async checkProductStock(producto) {
+    // Obtener los flags de alerta actuales o inicializarlos si no existen
+    const alerta_stock_bajo = producto.alerta_stock_bajo || false
+    const alerta_stock_critico = producto.alerta_stock_critico || false
+    const alerta_stock_agotado = producto.alerta_stock_agotado || false
+
     // Verificar si el producto ya tiene una notificación activa
     const existingNotificationsQuery = query(
       collection(db, "notifications"),
@@ -148,8 +154,29 @@ class NotificationSystem {
     const existingNotificationsSnapshot = await getDocs(existingNotificationsQuery)
     const existingNotification = existingNotificationsSnapshot.docs[0]
 
+    // Actualizar los flags según el estado del stock
+    const updateFlags = {}
+
+    // Si el stock es normal, resetear todos los flags
+    if (producto.stock > producto.stockMinimo || producto.stock > CONFIG.STOCK_MINIMO_PRODUCTO) {
+      if (alerta_stock_bajo || alerta_stock_critico || alerta_stock_agotado) {
+        updateFlags.alerta_stock_bajo = false
+        updateFlags.alerta_stock_critico = false
+        updateFlags.alerta_stock_agotado = false
+
+        // Si hay una notificación existente, eliminarla
+        if (existingNotification) {
+          await deleteDoc(doc(db, "notifications", existingNotification.id))
+        }
+
+        // Actualizar el producto con los flags reseteados
+        await updateDoc(doc(db, "productos", producto.id), updateFlags)
+      }
+      return
+    }
+
     // Si el stock es 0, crear notificación de stock agotado
-    if (producto.stock === 0) {
+    if (producto.stock === 0 && !alerta_stock_agotado) {
       if (existingNotification) {
         // Actualizar notificación existente si es de tipo diferente
         if (existingNotification.data().type !== "danger") {
@@ -175,9 +202,18 @@ class NotificationSystem {
           hasAction: true,
         })
       }
+
+      // Actualizar flags del producto
+      updateFlags.alerta_stock_agotado = true
+      updateFlags.alerta_stock_critico = true
+      updateFlags.alerta_stock_bajo = true
+      await updateDoc(doc(db, "productos", producto.id), updateFlags)
     }
     // Si el stock es crítico, crear notificación de stock crítico
-    else if (producto.stock <= producto.stockCritico || producto.stock <= CONFIG.STOCK_CRITICO_PRODUCTO) {
+    else if (
+      (producto.stock <= producto.stockCritico || producto.stock <= CONFIG.STOCK_CRITICO_PRODUCTO) &&
+      !alerta_stock_critico
+    ) {
       if (existingNotification) {
         // Actualizar notificación existente si es de tipo diferente
         if (existingNotification.data().type !== "warning") {
@@ -203,9 +239,17 @@ class NotificationSystem {
           hasAction: true,
         })
       }
+
+      // Actualizar flags del producto
+      updateFlags.alerta_stock_critico = true
+      updateFlags.alerta_stock_bajo = true
+      await updateDoc(doc(db, "productos", producto.id), updateFlags)
     }
     // Si el stock es bajo, crear notificación de stock bajo
-    else if (producto.stock <= producto.stockMinimo || producto.stock <= CONFIG.STOCK_MINIMO_PRODUCTO) {
+    else if (
+      (producto.stock <= producto.stockMinimo || producto.stock <= CONFIG.STOCK_MINIMO_PRODUCTO) &&
+      !alerta_stock_bajo
+    ) {
       if (existingNotification) {
         // Actualizar notificación existente si es de tipo diferente
         if (existingNotification.data().type !== "info") {
@@ -229,18 +273,20 @@ class NotificationSystem {
           itemName: producto.nombre,
         })
       }
-    }
-    // Si el stock es normal, archivar notificación si existe
-    else if (existingNotification) {
-      await updateDoc(doc(db, "notifications", existingNotification.id), {
-        archived: true,
-        updatedAt: serverTimestamp(),
-      })
+
+      // Actualizar flags del producto
+      updateFlags.alerta_stock_bajo = true
+      await updateDoc(doc(db, "productos", producto.id), updateFlags)
     }
   }
 
   // Verificar stock de armazón
   async checkArmazonStock(armazon) {
+    // Obtener los flags de alerta actuales o inicializarlos si no existen
+    const alerta_stock_bajo = armazon.alerta_stock_bajo || false
+    const alerta_stock_critico = armazon.alerta_stock_critico || false
+    const alerta_stock_agotado = armazon.alerta_stock_agotado || false
+
     // Verificar si el armazón ya tiene una notificación activa
     const existingNotificationsQuery = query(
       collection(db, "notifications"),
@@ -253,8 +299,29 @@ class NotificationSystem {
     const existingNotificationsSnapshot = await getDocs(existingNotificationsQuery)
     const existingNotification = existingNotificationsSnapshot.docs[0]
 
+    // Actualizar los flags según el estado del stock
+    const updateFlags = {}
+
+    // Si el stock es normal, resetear todos los flags
+    if (armazon.stock > armazon.stockMinimo || armazon.stock > CONFIG.STOCK_MINIMO_ARMAZON) {
+      if (alerta_stock_bajo || alerta_stock_critico || alerta_stock_agotado) {
+        updateFlags.alerta_stock_bajo = false
+        updateFlags.alerta_stock_critico = false
+        updateFlags.alerta_stock_agotado = false
+
+        // Si hay una notificación existente, eliminarla
+        if (existingNotification) {
+          await deleteDoc(doc(db, "notifications", existingNotification.id))
+        }
+
+        // Actualizar el armazón con los flags reseteados
+        await updateDoc(doc(db, "armazones", armazon.id), updateFlags)
+      }
+      return
+    }
+
     // Si el stock es 0, crear notificación de stock agotado
-    if (armazon.stock === 0) {
+    if (armazon.stock === 0 && !alerta_stock_agotado) {
       if (existingNotification) {
         // Actualizar notificación existente si es de tipo diferente
         if (existingNotification.data().type !== "danger") {
@@ -280,9 +347,18 @@ class NotificationSystem {
           hasAction: true,
         })
       }
+
+      // Actualizar flags del armazón
+      updateFlags.alerta_stock_agotado = true
+      updateFlags.alerta_stock_critico = true
+      updateFlags.alerta_stock_bajo = true
+      await updateDoc(doc(db, "armazones", armazon.id), updateFlags)
     }
     // Si el stock es crítico, crear notificación de stock crítico
-    else if (armazon.stock <= armazon.stockCritico || armazon.stock <= CONFIG.STOCK_CRITICO_ARMAZON) {
+    else if (
+      (armazon.stock <= armazon.stockCritico || armazon.stock <= CONFIG.STOCK_CRITICO_ARMAZON) &&
+      !alerta_stock_critico
+    ) {
       if (existingNotification) {
         // Actualizar notificación existente si es de tipo diferente
         if (existingNotification.data().type !== "warning") {
@@ -308,9 +384,17 @@ class NotificationSystem {
           hasAction: true,
         })
       }
+
+      // Actualizar flags del armazón
+      updateFlags.alerta_stock_critico = true
+      updateFlags.alerta_stock_bajo = true
+      await updateDoc(doc(db, "armazones", armazon.id), updateFlags)
     }
     // Si el stock es bajo, crear notificación de stock bajo
-    else if (armazon.stock <= armazon.stockMinimo || armazon.stock <= CONFIG.STOCK_MINIMO_ARMAZON) {
+    else if (
+      (armazon.stock <= armazon.stockMinimo || armazon.stock <= CONFIG.STOCK_MINIMO_ARMAZON) &&
+      !alerta_stock_bajo
+    ) {
       if (existingNotification) {
         // Actualizar notificación existente si es de tipo diferente
         if (existingNotification.data().type !== "info") {
@@ -334,13 +418,10 @@ class NotificationSystem {
           itemName: armazon.nombre,
         })
       }
-    }
-    // Si el stock es normal, archivar notificación si existe
-    else if (existingNotification) {
-      await updateDoc(doc(db, "notifications", existingNotification.id), {
-        archived: true,
-        updatedAt: serverTimestamp(),
-      })
+
+      // Actualizar flags del armazón
+      updateFlags.alerta_stock_bajo = true
+      await updateDoc(doc(db, "armazones", armazon.id), updateFlags)
     }
   }
 
@@ -373,102 +454,121 @@ class NotificationSystem {
   // Marcar una notificación como leída
   async markAsRead(id) {
     try {
-      // Marcar como leída en Firestore (esto la eliminará de la lista debido a la consulta)
-      await updateDoc(doc(db, "notifications", id), {
-        read: true,
-        updatedAt: serverTimestamp(),
-      })
+      // Obtener la notificación antes de eliminarla para actualizar los flags
+      const notificationRef = doc(db, "notifications", id)
+      const notificationSnap = await getDoc(notificationRef)
 
-      // Eliminar la notificación del DOM con animación
-      const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
-      if (notificationElement) {
-        notificationElement.style.animation = "fadeOut 0.3s forwards"
-        setTimeout(() => {
-          if (notificationElement.parentNode) {
-            notificationElement.parentNode.removeChild(notificationElement)
+      if (notificationSnap.exists()) {
+        const notification = notificationSnap.data()
 
-            // Verificar si no hay más notificaciones
-            if (this.notificationList.children.length === 0) {
-              this.notificationList.innerHTML = `
-                <div class="notification-empty">
-                    No hay notificaciones
-                </div>
-              `
+        // Eliminar la notificación de Firestore
+        await deleteDoc(notificationRef)
+
+        // Eliminar la notificación del DOM con animación
+        const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
+        if (notificationElement) {
+          notificationElement.style.animation = "fadeOut 0.3s forwards"
+          setTimeout(() => {
+            if (notificationElement.parentNode) {
+              notificationElement.parentNode.removeChild(notificationElement)
+
+              // Verificar si no hay más notificaciones
+              if (this.notificationList.children.length === 0) {
+                this.notificationList.innerHTML = `
+                  <div class="notification-empty">
+                      No hay notificaciones
+                  </div>
+                `
+              }
             }
-          }
-        }, 300)
-      }
+          }, 300)
+        }
 
-      // Actualizar contador
-      this.updateNotificationCount()
+        // Actualizar contador
+        this.updateNotificationCount()
+      }
     } catch (error) {
-      console.error("Error al marcar notificación como leída:", error)
+      console.error("Error al eliminar notificación:", error)
     }
   }
 
   // Archivar una notificación
   async archiveNotification(id) {
     try {
-      // Archivar en Firestore (esto la eliminará de la lista debido a la consulta)
-      await updateDoc(doc(db, "notifications", id), {
-        archived: true,
-        updatedAt: serverTimestamp(),
-      })
+      // Obtener la notificación antes de eliminarla para actualizar los flags
+      const notificationRef = doc(db, "notifications", id)
+      const notificationSnap = await getDoc(notificationRef)
 
-      // Eliminar la notificación del DOM con animación
-      const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
-      if (notificationElement) {
-        notificationElement.style.animation = "fadeOut 0.3s forwards"
-        setTimeout(() => {
-          if (notificationElement.parentNode) {
-            notificationElement.parentNode.removeChild(notificationElement)
+      if (notificationSnap.exists()) {
+        const notification = notificationSnap.data()
 
-            // Verificar si no hay más notificaciones
-            if (this.notificationList.children.length === 0) {
-              this.notificationList.innerHTML = `
-                <div class="notification-empty">
-                    No hay notificaciones
-                </div>
-              `
+        // Eliminar la notificación de Firestore
+        await deleteDoc(notificationRef)
+
+        // Eliminar la notificación del DOM con animación
+        const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
+        if (notificationElement) {
+          notificationElement.style.animation = "fadeOut 0.3s forwards"
+          setTimeout(() => {
+            if (notificationElement.parentNode) {
+              notificationElement.parentNode.removeChild(notificationElement)
+
+              // Verificar si no hay más notificaciones
+              if (this.notificationList.children.length === 0) {
+                this.notificationList.innerHTML = `
+                  <div class="notification-empty">
+                      No hay notificaciones
+                  </div>
+                `
+              }
             }
-          }
-        }, 300)
-      }
+          }, 300)
+        }
 
-      // Actualizar contador
-      this.updateNotificationCount()
+        // Actualizar contador
+        this.updateNotificationCount()
+      }
     } catch (error) {
-      console.error("Error al archivar notificación:", error)
+      console.error("Error al eliminar notificación:", error)
     }
   }
 
   // Eliminar una notificación
   async removeNotification(id) {
     try {
-      await deleteDoc(doc(db, "notifications", id))
+      // Obtener la notificación antes de eliminarla para actualizar los flags
+      const notificationRef = doc(db, "notifications", id)
+      const notificationSnap = await getDoc(notificationRef)
 
-      // Eliminar la notificación del DOM con animación
-      const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
-      if (notificationElement) {
-        notificationElement.style.animation = "fadeOut 0.3s forwards"
-        setTimeout(() => {
-          if (notificationElement.parentNode) {
-            notificationElement.parentNode.removeChild(notificationElement)
+      if (notificationSnap.exists()) {
+        const notification = notificationSnap.data()
 
-            // Verificar si no hay más notificaciones
-            if (this.notificationList.children.length === 0) {
-              this.notificationList.innerHTML = `
-                <div class="notification-empty">
-                    No hay notificaciones
-                </div>
-              `
+        // Eliminar la notificación de Firestore
+        await deleteDoc(notificationRef)
+
+        // Eliminar la notificación del DOM con animación
+        const notificationElement = document.querySelector(`[data-notification-id="${id}"]`)
+        if (notificationElement) {
+          notificationElement.style.animation = "fadeOut 0.3s forwards"
+          setTimeout(() => {
+            if (notificationElement.parentNode) {
+              notificationElement.parentNode.removeChild(notificationElement)
+
+              // Verificar si no hay más notificaciones
+              if (this.notificationList.children.length === 0) {
+                this.notificationList.innerHTML = `
+                  <div class="notification-empty">
+                      No hay notificaciones
+                  </div>
+                `
+              }
             }
-          }
-        }, 300)
-      }
+          }, 300)
+        }
 
-      // Actualizar contador
-      this.updateNotificationCount()
+        // Actualizar contador
+        this.updateNotificationCount()
+      }
     } catch (error) {
       console.error("Error al eliminar notificación:", error)
     }
@@ -490,12 +590,10 @@ class NotificationSystem {
         return
       }
 
+      // Eliminar todas las notificaciones
       const batch = db.batch()
       unreadNotificationsSnapshot.forEach((doc) => {
-        batch.update(doc.ref, {
-          read: true,
-          updatedAt: serverTimestamp(),
-        })
+        batch.delete(doc.ref)
       })
 
       await batch.commit()
@@ -508,16 +606,17 @@ class NotificationSystem {
       `
 
       // Actualizar contador
+      this.notifications = []
       this.updateNotificationCount()
 
-      this.showToast("Todas las notificaciones han sido marcadas como leídas", "success")
+      this.showToast("Todas las notificaciones han sido eliminadas", "success")
     } catch (error) {
-      console.error("Error al marcar todas las notificaciones como leídas:", error)
-      this.showToast("Error al marcar las notificaciones como leídas", "danger")
+      console.error("Error al eliminar todas las notificaciones:", error)
+      this.showToast("Error al eliminar las notificaciones", "danger")
     }
   }
 
-  // Limpiar todas las notificaciones (archivarlas)
+  // Limpiar todas las notificaciones (eliminarlas)
   async clearAllNotifications() {
     try {
       const activeNotificationsQuery = query(collection(db, "notifications"), where("archived", "==", false))
@@ -525,16 +624,14 @@ class NotificationSystem {
       const activeNotificationsSnapshot = await getDocs(activeNotificationsQuery)
 
       if (activeNotificationsSnapshot.empty) {
-        this.showToast("No hay notificaciones para archivar", "info")
+        this.showToast("No hay notificaciones para eliminar", "info")
         return
       }
 
+      // Eliminar todas las notificaciones
       const batch = db.batch()
       activeNotificationsSnapshot.forEach((doc) => {
-        batch.update(doc.ref, {
-          archived: true,
-          updatedAt: serverTimestamp(),
-        })
+        batch.delete(doc.ref)
       })
 
       await batch.commit()
@@ -547,12 +644,13 @@ class NotificationSystem {
       `
 
       // Actualizar contador
+      this.notifications = []
       this.updateNotificationCount()
 
-      this.showToast("Todas las notificaciones han sido archivadas", "success")
+      this.showToast("Todas las notificaciones han sido eliminadas", "success")
     } catch (error) {
-      console.error("Error al archivar todas las notificaciones:", error)
-      this.showToast("Error al archivar las notificaciones", "danger")
+      console.error("Error al eliminar todas las notificaciones:", error)
+      this.showToast("Error al eliminar las notificaciones", "danger")
     }
   }
 
@@ -743,13 +841,13 @@ class NotificationSystem {
       outOfStockModal.style.display = "block"
 
       // Configurar evento para el botón de mantener
-      const handleKeep = () => {
+      const handleKeep = async () => {
         outOfStockModal.style.display = "none"
         this.showToast(`Se conservará el ${itemType} ${itemName} en el inventario`, "info")
 
-        // Marcar la notificación como leída (lo que la eliminará de la lista)
+        // Eliminar la notificación completamente
         if (notificationId) {
-          this.markAsRead(notificationId)
+          await this.removeNotification(notificationId)
         }
 
         keepProduct.removeEventListener("click", handleKeep)
@@ -758,12 +856,13 @@ class NotificationSystem {
       // Configurar evento para el botón de eliminar
       const handleRemove = async () => {
         try {
+          // Eliminar el producto/armazón
           await deleteDoc(doc(db, itemType === "producto" ? "productos" : "armazones", itemId))
           this.showToast(`${itemType === "producto" ? "Producto" : "Armazón"} eliminado correctamente`, "success")
 
-          // Archivar la notificación (lo que la eliminará de la lista)
+          // Eliminar la notificación completamente
           if (notificationId) {
-            this.archiveNotification(notificationId)
+            await this.removeNotification(notificationId)
           }
 
           outOfStockModal.style.display = "none"
@@ -841,6 +940,54 @@ class NotificationSystem {
         toast.remove()
       }
     }, 5000)
+  }
+
+  // Función para actualizar los flags de alerta de un producto
+  async updateProductAlertFlags(productId, flags) {
+    try {
+      await updateDoc(doc(db, "productos", productId), flags)
+    } catch (error) {
+      console.error("Error al actualizar flags de alerta del producto:", error)
+    }
+  }
+
+  // Función para actualizar los flags de alerta de un armazón
+  async updateArmazonAlertFlags(armazonId, flags) {
+    try {
+      await updateDoc(doc(db, "armazones", armazonId), flags)
+    } catch (error) {
+      console.error("Error al actualizar flags de alerta del armazón:", error)
+    }
+  }
+
+  // Función para resetear los flags de alerta cuando se marca una notificación como leída
+  async resetAlertFlagsForItem(itemType, itemId, alertType) {
+    try {
+      const itemRef = doc(db, itemType === "producto" ? "productos" : "armazones", itemId)
+      const itemSnap = await getDoc(itemRef)
+
+      if (itemSnap.exists()) {
+        const item = itemSnap.data()
+        const updateFlags = {}
+
+        // Resetear el flag correspondiente según el tipo de alerta
+        switch (alertType) {
+          case "danger": // Stock agotado
+            updateFlags.alerta_stock_agotado = false
+            break
+          case "warning": // Stock crítico
+            updateFlags.alerta_stock_critico = false
+            break
+          case "info": // Stock bajo
+            updateFlags.alerta_stock_bajo = false
+            break
+        }
+
+        await updateDoc(itemRef, updateFlags)
+      }
+    } catch (error) {
+      console.error("Error al resetear flags de alerta:", error)
+    }
   }
 }
 
