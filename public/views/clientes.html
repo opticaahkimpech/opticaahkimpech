@@ -40,6 +40,10 @@
             --light-gray: #f5f5f5;
             --medium-gray: #e0e0e0;
             --dark-gray: #757575;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #dc2626;
+            --info-color: #3b82f6;
         }
 
         /* Base styles */
@@ -60,6 +64,257 @@
             height: 100%;
             overflow: auto;
             background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Validation styles */
+        .input-error {
+            border-color: var(--danger-color) !important;
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+        }
+
+        .input-success {
+            border-color: var(--success-color) !important;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* Botones más pequeños */
+        .btn-compact {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Improved filter styles */
+        .filter-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .dark .filter-container {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-color: #475569;
+        }
+
+        .filter-toggle-btn {
+            background: linear-gradient(135deg, #f09d1f 0%, #e8890b 100%);
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(240, 157, 31, 0.3);
+        }
+
+        .filter-toggle-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(240, 157, 31, 0.4);
+        }
+
+        .filter-toggle-btn.active {
+            background: linear-gradient(135deg, #e8890b 0%, #d97706 100%);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            position: relative;
+        }
+
+        .filter-label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .dark .filter-label {
+            color: #d1d5db;
+        }
+
+        .filter-select, .filter-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            appearance: none;
+        }
+
+        .dark .filter-select, .dark .filter-input {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(240, 157, 31, 0.1);
+        }
+
+        .filter-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .dark .filter-actions {
+            border-top-color: #4b5563;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-btn-apply {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .filter-btn-apply:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .filter-btn-clear {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .dark .filter-btn-clear {
+            background: #4b5563;
+            color: #f9fafb;
+            border-color: #6b7280;
+        }
+
+        .filter-btn-clear:hover {
+            background: #e5e7eb;
+        }
+
+        .dark .filter-btn-clear:hover {
+            background: #6b7280;
+        }
+
+        .filter-slide-enter {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .filter-slide-exit {
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+                max-height: 300px;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+                max-height: 300px;
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+                max-height: 0;
+            }
+        }
+
+        /* Search box improvements - sin botón */
+        .search-container {
+            position: relative;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .dark .search-input {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(240, 157, 31, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            pointer-events: none;
         }
 
         /* Dark mode styles */
@@ -104,7 +359,7 @@
         }
 
         .btn-action:hover {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .btn-action:active {
@@ -113,7 +368,6 @@
 
         /* Print styles */
         @media print {
-
             .main-header,
             .main-nav,
             .client-actions,
@@ -133,6 +387,22 @@
                 max-width: 100%;
             }
         }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 
@@ -148,7 +418,7 @@
             <ul>
                 <li><a href="inventario.html">Inventario</a></li>
                 <li><a href="ventas.html">Ventas</a></li>
-                <li><a href="clientes.html">Clientes</a></li>
+                <li class="active"><a href="clientes.html">Clientes</a></li>
                 <li><a href="convenios.html">Convenios</a></li>
                 <li><a href="usuarios.html">Usuarios</a></li>
                 <li><a href="#" id="logoutBtn">Cerrar sesión</a></li>
@@ -162,61 +432,89 @@
 
         <!-- Actions Bar -->
         <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <button id="addClientBtn"
-                class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Nuevo cliente
-            </button>
-            <div class="search-box w-full sm:w-auto flex">
-                <input type="text" id="searchCliente" placeholder="Buscar cliente..."
-                    class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
-                <button
-                    class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center"
-                    id="searchClienteBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+            <div class="flex gap-2">
+                <button id="addClientBtn"
+                    class="btn-action btn-compact bg-primary hover:bg-primary/80 text-white py-2 px-6 rounded shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
+                    Nuevo cliente
                 </button>
+                <button id="toggleFiltrosBtn" class="btn-action btn-compact bg-primary hover:bg-primary/80 text-white py-3 px-6 rounded shadow-sm flex items-center filter-toggle-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filtros
+                </button>
+            </div>
+            
+            <div class="search-container">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" id="searchCliente" placeholder="Buscar por nombre, teléfono o email..." class="search-input">
             </div>
         </div>
 
-        <!-- Filtros Panel (inicialmente oculto) -->
-        <div id="filtrosPanel" class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-card mb-6" style="display: none;">
-            <h3 class="text-lg font-semibold mb-3">Filtros avanzados</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="form-group">
-                    <label for="filtroConvenio" class="block mb-1 font-medium">Convenio</label>
-                    <select id="filtroConvenio"
-                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
-                        <option value="">Todos</option>
+        <!-- Filtros Panel Mejorado -->
+        <div id="filtrosPanel" class="filter-container" style="display: none;">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+                Filtros Avanzados
+            </h3>
+            
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label for="filtroConvenio" class="filter-label">Estado de Convenio</label>
+                    <select id="filtroConvenio" class="filter-select">
+                        <option value="">Todos los clientes</option>
                         <option value="true">Con convenio</option>
                         <option value="false">Sin convenio</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="filtroEmpresa" class="block mb-1 font-medium">Empresa</label>
-                    <select id="filtroEmpresa"
-                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
-                        <option value="">Todas</option>
+                
+                <div class="filter-group">
+                    <label for="filtroEmpresa" class="filter-label">Empresa</label>
+                    <select id="filtroEmpresa" class="filter-select">
+                        <option value="">Todas las empresas</option>
                         <!-- Se llenará dinámicamente -->
                     </select>
                 </div>
-                <div class="form-group flex items-end">
-                    <button id="aplicarFiltrosBtn"
-                        class="btn-action bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded shadow-sm flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                        Aplicar filtros
-                    </button>
+                
+                <div class="filter-group">
+                    <label for="filtroFechaRegistro" class="filter-label">Registrado desde</label>
+                    <input type="date" id="filtroFechaRegistro" class="filter-input">
                 </div>
+                
+                <div class="filter-group">
+                    <label for="filtroUltimaVisita" class="filter-label">Última visita</label>
+                    <select id="filtroUltimaVisita" class="filter-select">
+                        <option value="">Cualquier fecha</option>
+                        <option value="7">Últimos 7 días</option>
+                        <option value="30">Últimos 30 días</option>
+                        <option value="90">Últimos 3 meses</option>
+                        <option value="365">Último año</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="filter-actions">
+                <button id="limpiarFiltrosBtn" class="filter-btn filter-btn-clear">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Limpiar filtros
+                </button>
+                <button id="aplicarFiltrosBtn" class="filter-btn filter-btn-apply">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Aplicar filtros
+                </button>
             </div>
         </div>
 
@@ -260,41 +558,45 @@
 
     <!-- New/Edit Client Modal -->
     <div id="clientModal" class="modal">
-        <div
-            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+        <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
             <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
                 <h3 id="modalTitle" class="text-xl font-semibold">Nuevo Cliente</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
             </div>
             <form id="clientForm" class="space-y-4">
                 <input type="hidden" id="clientId">
-                <input type="hidden" id="convenioSource" value="">
 
                 <div class="form-group">
-                    <label for="clientName" class="block mb-1 font-medium">Nombre completo</label>
+                    <label for="clientName" class="block mb-1 font-medium">Nombre completo *</label>
                     <input type="text" id="clientName"
                         class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
                         required>
+                    <div id="clientNameError" class="error-message"></div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
-                        <label for="clientPhone" class="block mb-1 font-medium">Teléfono</label>
+                        <label for="clientPhone" class="block mb-1 font-medium">Teléfono *</label>
                         <input type="tel" id="clientPhone"
                             class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            placeholder="10 dígitos (ej: 9991234567)"
                             required>
+                        <div id="clientPhoneError" class="error-message"></div>
                     </div>
                     <div class="form-group">
                         <label for="clientEmail" class="block mb-1 font-medium">Email</label>
                         <input type="email" id="clientEmail"
-                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            placeholder="ejemplo@correo.com">
+                        <div id="clientEmailError" class="error-message"></div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="clientAddress" class="block mb-1 font-medium">Dirección</label>
                     <textarea id="clientAddress" rows="2"
-                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        placeholder="Calle, número, colonia, ciudad"></textarea>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -302,6 +604,7 @@
                         <label for="clientBirthdate" class="block mb-1 font-medium">Fecha de nacimiento</label>
                         <input type="date" id="clientBirthdate"
                             class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <div id="clientBirthdateError" class="error-message"></div>
                     </div>
                     <div class="form-group opacity-50" id="clientEmpresaGroup">
                         <label for="clientEmpresa" class="block mb-1 font-medium">Empresa (Convenio)</label>
@@ -312,15 +615,16 @@
                             <!-- Options will be loaded dynamically -->
                         </select>
                     </div>
-                    <div class="form-group opacity-50" id="clientSucursalGroup" style="display: none;">
-                        <label for="clientSucursal" class="block mb-1 font-medium">Sucursal (Convenio)</label>
-                        <select id="clientSucursal"
-                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
-                            disabled>
-                            <option value="">Seleccione una sucursal</option>
-                            <!-- Options will be loaded dynamically -->
-                        </select>
-                    </div>
+                </div>
+
+                <div class="form-group opacity-50" id="clientSucursalGroup" style="display: none;">
+                    <label for="clientSucursal" class="block mb-1 font-medium">Sucursal (Convenio)</label>
+                    <select id="clientSucursal"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        disabled>
+                        <option value="">Seleccione una sucursal</option>
+                        <!-- Options will be loaded dynamically -->
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -333,10 +637,11 @@
 
                 <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
                     <button type="button"
-                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
-                    <button type="submit"
-                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar
-                        cliente</button>
+                        class="close-modal btn-compact py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit" id="saveClientBtn"
+                        class="btn-primary btn-compact py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">
+                        <span id="saveClientText">Guardar cliente</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -344,8 +649,7 @@
 
     <!-- Client Card Modal -->
     <div id="clientCardModal" class="modal">
-        <div
-            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
+        <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
             <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
                 <h3 class="text-xl font-semibold">Tarjeta de Cliente</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
@@ -360,29 +664,22 @@
                                 Nombre del Cliente</h4>
                         </div>
                         <div class="mb-2">
-                            <p><span class="font-semibold">Teléfono:</span> <span id="cardClientPhone">555-1234</span>
-                            </p>
+                            <p><span class="font-semibold">Teléfono:</span> <span id="cardClientPhone">555-1234</span></p>
                         </div>
                         <div class="mb-2">
-                            <p><span class="font-semibold">Email:</span> <span
-                                    id="cardClientEmail">cliente@ejemplo.com</span></p>
+                            <p><span class="font-semibold">Email:</span> <span id="cardClientEmail">cliente@ejemplo.com</span></p>
                         </div>
                         <div class="mb-2">
-                            <p><span class="font-semibold">Dirección:</span> <span id="cardClientAddress">Calle
-                                    Principal #123</span></p>
+                            <p><span class="font-semibold">Dirección:</span> <span id="cardClientAddress">Calle Principal #123</span></p>
                         </div>
                         <div class="mb-2">
-                            <p><span class="font-semibold">Fecha nacimiento:</span> <span
-                                    id="cardClientBirthdate">01/01/1990</span></p>
+                            <p><span class="font-semibold">Fecha nacimiento:</span> <span id="cardClientBirthdate">01/01/1990</span></p>
                         </div>
                         <div class="mb-2" id="cardClientConvenioContainer">
                             <p><span class="font-semibold">Convenio:</span> <span id="cardClientConvenio">No</span></p>
                         </div>
                         <div class="mb-2" id="cardClientEmpresaContainer">
                             <p><span class="font-semibold">Empresa:</span> <span id="cardClientEmpresa">N/A</span></p>
-                        </div>
-                        <div class="mb-2" id="cardClientSucursalContainer">
-                            <p><span class="font-semibold">Sucursal:</span> <span id="cardClientSucursal">N/A</span></p>
                         </div>
                     </div>
                 </div>
@@ -403,14 +700,10 @@
                             <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
                                 <thead>
                                     <tr>
-                                        <th
-                                            class="py-2 px-4 text-left bg-primary text-white sticky top-0 rounded-tl-lg">
-                                            Fecha</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0 rounded-tl-lg">Fecha</th>
                                         <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Producto</th>
                                         <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Estado</th>
-                                        <th
-                                            class="py-2 px-4 text-left bg-primary text-white sticky top-0 rounded-tr-lg">
-                                            Total</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0 rounded-tr-lg">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody id="clientHistoryBody" class="divide-y divide-mediumGray dark:divide-gray-700">
@@ -422,35 +715,22 @@
                 </div>
 
                 <!-- Actions Section -->
-                <div
-                    class="client-actions flex justify-end space-x-4 pt-4 border-t border-mediumGray dark:border-gray-700">
-                    <button
-                        class="btn-action bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded transition-colors flex items-center"
-                        id="newSaleBtn">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                <div class="client-actions flex justify-end space-x-4 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button class="btn-action btn-compact bg-green-500 hover:bg-green-600 text-white rounded transition-colors flex items-center" id="newSaleBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                         Nueva venta
                     </button>
-                    <button
-                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors flex items-center"
-                        id="printCardBtn">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    <button class="btn-primary btn-compact bg-primary hover:bg-primary/80 text-white rounded transition-colors flex items-center" id="printCardBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
                         Imprimir tarjeta
                     </button>
-                    <button
-                        class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center"
-                        id="closeCardBtn">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
+                    <button class="btn-compact bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center" id="closeCardBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         Cerrar
                     </button>
@@ -458,10 +738,13 @@
             </div>
         </div>
     </div>
-</body>
 
-<script type="module" src="../assets/js/check-current-user.js"></script>
-<script type="module" src="../assets/js/auth-check.js"></script>
-<script type="module" src="../assets/js/clientes.js"></script>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs"></div>
+
+    <script type="module" src="../assets/js/check-current-user.js"></script>
+    <script type="module" src="../assets/js/auth-check.js"></script>
+    <script type="module" src="../assets/js/clientes.js"></script>
+</body>
 
 </html>
