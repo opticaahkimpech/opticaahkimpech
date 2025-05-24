@@ -10,10 +10,14 @@
     <link rel="stylesheet" href="./assets/css/styles.css">
 </head>
 <body>
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
     <div class="login-container">
         <div class="logo-container">
             <img src="./assets/img/logoAKP.png" alt="Logo" class="login-logo">
         </div>
+        
         <form id="loginForm" class="login-form">
             <div id="adminLoginFields">
                 <div class="form-group">
@@ -29,7 +33,7 @@
                         </button>
                     </div>
                     <div id="forgotPassword">
-                        <a id="forgotPasswordLink" href="#">¿Olvidaste tu contraseña?</a>
+                        <a id="forgotPasswordLink">¿Olvidaste tu contraseña?</a>
                     </div>
                 </div>
             </div>
@@ -51,14 +55,43 @@
             </div>
             
             <div id="error-message" class="error-message"></div>
-            <button type="submit" class="btn-primary login-btn">Iniciar sesión</button>
+            
+            <button type="submit" class="btn-primary login-btn" id="loginBtn">
+                <span id="loginBtnText">Iniciar sesión</span>
+            </button>
             
             <div class="toggle-login-mode">
-                <a href="#" id="toggleLoginMode">
+                <a id="toggleLoginMode">
                     <span id="loginModeText">Iniciar como Empleado</span>
                 </a>
             </div>
         </form>
+    </div>
+
+    <!-- Password Recovery Modal -->
+    <div id="passwordRecoveryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Recuperar Contraseña</h3>
+                <button type="button" class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--dark-gray);">
+                    Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+                </p>
+                <div class="form-group">
+                    <label for="recoveryEmail">Correo Electrónico</label>
+                    <input type="email" id="recoveryEmail" placeholder="ejemplo@correo.com" required>
+                </div>
+                <div id="recovery-error-message" class="error-message"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" id="cancelRecovery">Cancelar</button>
+                <button type="button" class="btn btn-modal-primary" id="sendRecovery">
+                    <span id="sendRecoveryText">Enviar enlace</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts de la aplicación con type="module" -->
