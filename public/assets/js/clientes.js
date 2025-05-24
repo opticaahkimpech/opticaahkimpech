@@ -148,7 +148,7 @@ async function loadEmpresas() {
     }
 }
 
-// Función para mostrar notificaciones toast
+// Función para mostrar notificaciones toast mejoradas
 function showToast(message, type = "info", duration = 5000) {
     let toastContainer = document.getElementById("toastContainer")
     if (!toastContainer) {
@@ -161,12 +161,12 @@ function showToast(message, type = "info", duration = 5000) {
     const toast = document.createElement("div")
 
     toast.className = `bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 mb-3 flex items-center justify-between border-l-4 transform translate-x-full transition-transform duration-300 ${type === "success"
-            ? "border-green-500"
-            : type === "danger"
-                ? "border-red-500"
-                : type === "warning"
-                    ? "border-yellow-500"
-                    : "border-blue-500"
+        ? "border-green-500"
+        : type === "danger"
+            ? "border-red-500"
+            : type === "warning"
+                ? "border-yellow-500"
+                : "border-blue-500"
         }`
 
     const icons = {
@@ -225,6 +225,122 @@ function showToast(message, type = "info", duration = 5000) {
             }
         }, 300)
     }
+}
+
+// Función para mostrar alertas de confirmación personalizadas
+function showConfirmDialog(title, message, confirmText = "Confirmar", cancelText = "Cancelar", type = "warning") {
+    return new Promise((resolve) => {
+        // Crear modal de confirmación
+        const confirmModal = document.createElement('div')
+        confirmModal.className = 'modal'
+        confirmModal.style.display = 'block'
+        confirmModal.style.zIndex = '9999'
+
+        confirmModal.innerHTML = `
+            <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-1/3 max-w-md mx-auto mt-32 rounded-lg shadow-modal p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${type === 'danger' ? 'bg-red-100 dark:bg-red-900' :
+                type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900' :
+                    'bg-blue-100 dark:bg-blue-900'
+            }">
+                        <svg class="w-6 h-6 ${type === 'danger' ? 'text-red-600 dark:text-red-400' :
+                type === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-blue-600 dark:text-blue-400'
+            }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            ${type === 'danger' ?
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />' :
+                type === 'warning' ?
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />' :
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />'
+            }
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">${title}</h3>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <p class="text-gray-600 dark:text-gray-300">${message}</p>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button id="cancelBtn" class="px-4 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors">
+                        ${cancelText}
+                    </button>
+                    <button id="confirmBtn" class="px-4 py-2 text-white rounded-md transition-colors ${type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
+                type === 'warning' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                    'bg-blue-600 hover:bg-blue-700'
+            }">
+                        ${confirmText}
+                    </button>
+                </div>
+            </div>
+        `
+
+        document.body.appendChild(confirmModal)
+
+        // Configurar eventos
+        const cancelBtn = confirmModal.querySelector('#cancelBtn')
+        const confirmBtn = confirmModal.querySelector('#confirmBtn')
+
+        const cleanup = () => {
+            document.body.removeChild(confirmModal)
+        }
+
+        cancelBtn.addEventListener('click', () => {
+            cleanup()
+            resolve(false)
+        })
+
+        confirmBtn.addEventListener('click', () => {
+            cleanup()
+            resolve(true)
+        })
+
+        // Cerrar con ESC
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                cleanup()
+                resolve(false)
+                document.removeEventListener('keydown', handleKeyDown)
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown)
+
+        // Cerrar al hacer clic fuera
+        confirmModal.addEventListener('click', (e) => {
+            if (e.target === confirmModal) {
+                cleanup()
+                resolve(false)
+            }
+        })
+    })
+}
+
+// Función para mostrar modal de doble verificación para pagos
+async function showPaymentConfirmation(amount, description = "este pago") {
+    const confirmed = await showConfirmDialog(
+        "Confirmar Pago",
+        `¿Está seguro de que desea registrar ${description} por $${amount.toFixed(2)}?`,
+        "Sí, registrar pago",
+        "Cancelar",
+        "warning"
+    )
+
+    if (confirmed) {
+        // Segunda confirmación
+        return await showConfirmDialog(
+            "Confirmación Final",
+            `Esta acción no se puede deshacer. ¿Proceder con el pago de $${amount.toFixed(2)}?`,
+            "Confirmar definitivamente",
+            "Cancelar",
+            "danger"
+        )
+    }
+
+    return false
 }
 
 // Configurar validaciones en tiempo real
@@ -744,7 +860,7 @@ function setupClientCardModalEvents() {
     const printCardBtn = document.getElementById("printCardBtn")
     if (printCardBtn) {
         printCardBtn.addEventListener("click", () => {
-            window.print()
+            printClientHistory()
         })
     }
 
@@ -755,6 +871,544 @@ function setupClientCardModalEvents() {
                 window.location.href = `ventas.html?clientId=${currentClient.id}`
             }
         })
+    }
+}
+
+// Función para imprimir historial del cliente optimizada
+async function printClientHistory() {
+    showPrintLoadingOverlay("Preparando impresión...");
+
+    const clientName = document.getElementById("cardClientName").textContent
+    const clientPhone = document.getElementById("cardClientPhone").textContent
+    const clientEmail = document.getElementById("cardClientEmail").textContent
+
+    // Obtener ventas del cliente
+    let ventas = []
+    try {
+        const ventasQuery = query(
+            collection(db, "ventas"),
+            where("clienteId", "==", currentClient.id),
+            orderBy("fecha", "desc")
+        )
+        const ventasSnapshot = await getDocs(ventasQuery)
+        ventas = ventasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    } catch (e) {
+        ventas = []
+    }
+
+    // Construir historial de ventas y abonos
+    let historyTable = ""
+    let saldoTotalPendiente = 0
+    for (const venta of ventas) {
+        const fechaVenta = venta.fecha instanceof Timestamp ? venta.fecha.toDate() : new Date(venta.fecha)
+        let productosInfo = "Venta"
+        if (venta.productos && venta.productos.length > 0) {
+            productosInfo = venta.productos.map((p) => p.nombreProducto).join(", ")
+        }
+        // Estado y saldo
+        const saldoInfo = await calcularSaldoPendiente(venta.id)
+        let estado = "Pendiente"
+        let estadoClass = "text-yellow-500"
+        if (saldoInfo.saldoPendiente <= 0) {
+            estado = "Pagado"
+            estadoClass = "text-green-500"
+        } else if (saldoInfo.totalAbonado > 0 || saldoInfo.totalPagado > 0) {
+            estado = "Abonado"
+            estadoClass = "text-blue-500"
+        }
+        saldoTotalPendiente += saldoInfo.saldoPendiente > 0 ? saldoInfo.saldoPendiente : 0
+
+        // Fila principal de la venta
+        historyTable += `
+            <tr>
+                <td>${fechaVenta.toLocaleDateString()}</td>
+                <td>${productosInfo}</td>
+                <td><span class="${estadoClass}">${estado}</span></td>
+                <td>$${venta.total.toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <table style="width:100%; margin:8px 0 8px 0; font-size:11px; border:1px solid #eee;">
+                        <thead>
+                            <tr>
+                                <th style="background:#f3f3f3;">Fecha</th>
+                                <th style="background:#f3f3f3;">Tipo</th>
+                                <th style="background:#f3f3f3;">Descripción</th>
+                                <th style="background:#f3f3f3;">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${await buildAbonosPagosRows(venta)}
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        `
+    }
+
+    // Agregar fila de saldo total pendiente si existe
+    let saldoPendienteRow = ""
+    if (saldoTotalPendiente > 0) {
+        saldoPendienteRow = `
+            <tr>
+                <td colspan="2"></td>
+                <td style="font-weight:bold; color:#dc2626;">Saldo pendiente</td>
+                <td style="font-weight:bold; color:#dc2626;">$${saldoTotalPendiente.toFixed(2)}</td>
+            </tr>
+        `
+    }
+
+    // Abrir ventana de impresión
+    const printWindow = window.open('', '_blank')
+    const LOGO_URL = "https://res.cloudinary.com/dmyejrbs7/image/upload/v1748059351/logoAKP-2_wdapz7.png"
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Historial de Cliente - ${clientName}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+                .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #f09d1f; padding-bottom: 10px; }
+                .client-info { margin-bottom: 20px; background: #f9f9f9; padding: 10px; border-radius: 5px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; }
+                th { background-color: #f09d1f; color: white; font-weight: bold; }
+                .text-green-500 { color: #10b981; }
+                .text-red-500 { color: #dc2626; }
+                .text-blue-500 { color: #3b82f6; }
+                .text-yellow-500 { color: #f59e0b; }
+                .font-bold { font-weight: bold; }
+                .bg-red-50 { background-color: #fef2f2; }
+                @media print { body { margin: 0; } .no-print { display: none; } }
+                .logo { width: 80px; margin-bottom: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="${LOGO_URL}" class="logo" alt="Logo empresa">
+                <h1>Servicios Ópticos Ah Kim Pech</h1>
+                <h2>Tarjeta e Historial de Cliente</h2>
+            </div>
+            <div class="client-info">
+                <h3>${clientName}</h3>
+                <p><strong>Teléfono:</strong> ${clientPhone}</p>
+                <p><strong>Email:</strong> ${clientEmail}</p>
+                <p><strong>Fecha de impresión:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${historyTable}
+                    ${saldoPendienteRow}
+                </tbody>
+            </table>
+        </body>
+        </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+    printWindow.close()
+
+    // Ocultar overlay de carga
+    hidePrintLoadingOverlay();
+}
+
+window.printClientHistory = printClientHistory
+
+async function buildAbonosPagosRows(venta) {
+    let rows = ""
+    // Abono inicial
+    if (venta.abono && venta.abono > 0) {
+        rows += `
+            <tr>
+                <td>${(venta.fecha instanceof Timestamp ? venta.fecha.toDate() : new Date(venta.fecha)).toLocaleDateString()}</td>
+                <td>Abono</td>
+                <td>Abono inicial</td>
+                <td>+$${venta.abono.toFixed(2)}</td>
+            </tr>
+        `
+    }
+    // Abonos adicionales
+    const abonosQuery = query(
+        collection(db, "abonos"),
+        where("ventaId", "==", venta.id),
+        orderBy("fecha", "asc")
+    )
+    const abonosSnapshot = await getDocs(abonosQuery)
+    abonosSnapshot.forEach((doc) => {
+        const abono = doc.data()
+        if (abono.descripcion !== 'Abono inicial') {
+            const fechaAbono = abono.fecha instanceof Timestamp ? abono.fecha.toDate() : new Date(abono.fecha)
+            rows += `
+                <tr>
+                    <td>${fechaAbono.toLocaleDateString()}</td>
+                    <td>Abono</td>
+                    <td>${abono.descripcion || 'Abono'}</td>
+                    <td>+$${abono.monto.toFixed(2)}</td>
+                </tr>
+            `
+        }
+    })
+    // Pagos
+    const pagosQuery = query(
+        collection(db, "pagos"),
+        where("ventaId", "==", venta.id),
+        orderBy("fecha", "asc")
+    )
+    const pagosSnapshot = await getDocs(pagosQuery)
+    pagosSnapshot.forEach((doc) => {
+        const pago = doc.data()
+        const fechaPago = pago.fecha instanceof Timestamp ? pago.fecha.toDate() : new Date(pago.fecha)
+        rows += `
+            <tr>
+                <td>${fechaPago.toLocaleDateString()}</td>
+                <td>Pago</td>
+                <td>${pago.descripcion || 'Pago'} (${pago.metodoPago || 'Efectivo'})</td>
+                <td>+$${pago.monto.toFixed(2)}</td>
+            </tr>
+        `
+    })
+    return rows
+}
+
+function showPrintLoadingOverlay(text = "Preparando impresión...") {
+    let overlay = document.getElementById("printLoadingOverlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "printLoadingOverlay";
+        overlay.style.position = "fixed";
+        overlay.style.top = 0;
+        overlay.style.left = 0;
+        overlay.style.width = "100vw";
+        overlay.style.height = "100vh";
+        overlay.style.background = "rgba(255,255,255,0.85)";
+        overlay.style.zIndex = 99999;
+        overlay.style.display = "flex";
+        overlay.style.flexDirection = "column";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.innerHTML = `
+            <div style="margin-bottom:16px;">
+                <div class="spinner" style="border:4px solid #f3f3f3;border-top:4px solid #f09d1f;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;"></div>
+            </div>
+            <div style="font-size:1.1rem;color:#444;">${text}</div>
+            <style>
+                @keyframes spin { 100% { transform: rotate(360deg); } }
+            </style>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        overlay.style.display = "flex";
+    }
+}
+function hidePrintLoadingOverlay() {
+    const overlay = document.getElementById("printLoadingOverlay");
+    if (overlay) overlay.style.display = "none";
+}
+
+// Función para cargar historial completo del cliente
+async function loadFullClientHistory(clientId) {
+    try {
+        const contentDiv = document.getElementById("fullHistoryContent")
+        if (!contentDiv) return
+
+        // Obtener ventas del cliente
+        const ventasQuery = query(
+            collection(db, "ventas"),
+            where("clienteId", "==", clientId),
+            orderBy("fecha", "desc")
+        )
+
+        const ventasSnapshot = await getDocs(ventasQuery)
+
+        if (ventasSnapshot.empty) {
+            contentDiv.innerHTML = '<div class="text-center py-8 text-gray-500">No hay compras registradas</div>'
+            return
+        }
+
+        let historyHTML = `
+            <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Fecha</th>
+                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Producto</th>
+                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Estado</th>
+                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Total</th>
+                        <th class="py-2 px-4 text-left bg-primary text-white sticky top-0">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `
+
+        let saldoTotalPendiente = 0
+
+        // Procesar cada venta
+        for (const ventaDoc of ventasSnapshot.docs) {
+            const venta = {
+                id: ventaDoc.id,
+                ...ventaDoc.data(),
+            }
+
+            // Calcular saldo pendiente de la venta
+            const saldoInfo = await calcularSaldoPendiente(venta.id)
+            saldoTotalPendiente += saldoInfo.saldoPendiente
+
+            // Formatear fecha de la venta
+            const fechaVenta = venta.fecha instanceof Timestamp ? venta.fecha.toDate() : new Date(venta.fecha)
+
+            // Obtener información de productos
+            let productosInfo = "Venta"
+            if (venta.productos && venta.productos.length > 0) {
+                productosInfo = venta.productos.map((p) => p.nombreProducto).join(", ")
+            }
+
+            // Determinar estado
+            let estado = "Pendiente"
+            let estadoClass = "text-yellow-500"
+
+            if (saldoInfo.saldoPendiente <= 0) {
+                estado = "Pagado"
+                estadoClass = "text-green-500"
+            } else if (saldoInfo.totalAbonado > 0 || saldoInfo.totalPagado > 0) {
+                estado = "Abonado"
+                estadoClass = "text-blue-500"
+            }
+
+            // Agregar fila de venta
+            historyHTML += `
+                <tr class="bg-gray-50 dark:bg-gray-700">
+                    <td class="py-2 px-4 font-semibold">${fechaVenta.toLocaleDateString()}</td>
+                    <td class="py-2 px-4">${productosInfo}</td>
+                    <td class="py-2 px-4">
+                        <span class="${estadoClass} font-semibold">${estado}</span>
+                    </td>
+                    <td class="py-2 px-4 font-bold">$${venta.total.toFixed(2)}</td>
+                    <td class="py-2 px-4">
+                        <button class="text-blue-500 hover:text-blue-700 text-sm" onclick="toggleFullVentaDetails('${venta.id}')">
+                            Ver detalles
+                        </button>
+                    </td>
+                </tr>
+                <tr id="full-detalles-${venta.id}" style="display: none;">
+                    <td colspan="5" class="py-0 px-4">
+                        <div class="bg-white dark:bg-gray-800 border-l-4 border-blue-500 pl-4 py-2">
+                            <div id="full-detalles-content-${venta.id}">
+                                <div class="text-center text-gray-500">Cargando detalles...</div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `
+
+            // Cargar detalles de la venta
+            await loadVentaDetailsForFullHistory(venta.id, venta.total, venta.abono || 0)
+        }
+
+        // Agregar saldo total pendiente
+        if (saldoTotalPendiente > 0) {
+            historyHTML += `
+                <tr class="bg-red-50 dark:bg-red-900/20 border-t-2 border-red-500">
+                    <td class="py-3 px-4 font-bold text-lg" colspan="3">SALDO TOTAL PENDIENTE</td>
+                    <td class="py-3 px-4 text-red-600 font-bold text-lg">$${saldoTotalPendiente.toFixed(2)}</td>
+                    <td class="py-3 px-4">
+                        <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" 
+                                onclick="payAllPendingFromModal('${clientId}', ${saldoTotalPendiente})">
+                            Pagar Todo
+                        </button>
+                    </td>
+                </tr>
+            `
+        }
+
+        historyHTML += `
+                </tbody>
+            </table>
+        `
+
+        contentDiv.innerHTML = historyHTML
+
+    } catch (error) {
+        console.error("Error al cargar historial completo:", error)
+        const contentDiv = document.getElementById("fullHistoryContent")
+        if (contentDiv) {
+            contentDiv.innerHTML = '<div class="text-center py-8 text-red-500">Error al cargar historial</div>'
+        }
+    }
+}
+
+// Función para cargar detalles de venta en el historial completo
+async function loadVentaDetailsForFullHistory(ventaId, totalVenta, abonoInicial) {
+    try {
+        const contentDiv = document.getElementById(`full-detalles-content-${ventaId}`)
+        if (!contentDiv) return
+
+        let detallesHTML = ""
+        let totalAbonado = 0
+        let totalPagado = 0
+
+        // Agregar abono inicial si existe
+        if (abonoInicial > 0) {
+            const fechaVenta = new Date()
+            detallesHTML += `
+                <div class="flex justify-between items-center py-1 border-b border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">${fechaVenta.toLocaleDateString()}</span>
+                        <span class="text-sm">Abono inicial</span>
+                    </div>
+                    <span class="text-green-500 font-semibold">+$${abonoInicial.toFixed(2)}</span>
+                </div>
+            `
+            totalAbonado += abonoInicial
+        }
+
+        // Obtener abonos adicionales
+        const abonosQuery = query(
+            collection(db, "abonos"),
+            where("ventaId", "==", ventaId),
+            orderBy("fecha", "asc")
+        )
+
+        const abonosSnapshot = await getDocs(abonosQuery)
+        abonosSnapshot.forEach((doc) => {
+            const abono = doc.data()
+            if (abono.descripcion !== 'Abono inicial') {
+                const fechaAbono = abono.fecha instanceof Timestamp ? abono.fecha.toDate() : new Date(abono.fecha)
+                detallesHTML += `
+                    <div class="flex justify-between items-center py-1 border-b border-gray-200 dark:border-gray-600">
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">${fechaAbono.toLocaleDateString()}</span>
+                            <span class="text-sm">${abono.descripcion || 'Abono'}</span>
+                        </div>
+                        <span class="text-green-500 font-semibold">+$${abono.monto.toFixed(2)}</span>
+                    </div>
+                `
+                totalAbonado += abono.monto
+            }
+        })
+
+        // Obtener pagos
+        const pagosQuery = query(
+            collection(db, "pagos"),
+            where("ventaId", "==", ventaId),
+            orderBy("fecha", "asc")
+        )
+
+        const pagosSnapshot = await getDocs(pagosQuery)
+        pagosSnapshot.forEach((doc) => {
+            const pago = doc.data()
+            const fechaPago = pago.fecha instanceof Timestamp ? pago.fecha.toDate() : new Date(pago.fecha)
+            detallesHTML += `
+                <div class="flex justify-between items-center py-1 border-b border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">${fechaPago.toLocaleDateString()}</span>
+                        <span class="text-sm">${pago.descripcion || 'Pago'} (${pago.metodoPago || 'Efectivo'})</span>
+                    </div>
+                    <span class="text-blue-500 font-semibold">+$${pago.monto.toFixed(2)}</span>
+                </div>
+            `
+            totalPagado += pago.monto
+        })
+
+        // Calcular saldo pendiente
+        const saldoPendiente = totalVenta - totalAbonado - totalPagado
+
+        // Agregar fila de saldo pendiente
+        detallesHTML += `
+            <div class="flex justify-between items-center py-2 mt-2 bg-gray-100 dark:bg-gray-700 rounded px-2">
+                <span class="font-semibold">Saldo pendiente</span>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold ${saldoPendiente > 0 ? 'text-red-500' : 'text-green-500'}">
+                        $${saldoPendiente.toFixed(2)}
+                    </span>
+                    ${saldoPendiente > 0 ? `
+                        <button class="add-payment-btn bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs" 
+                                data-venta-id="${ventaId}" data-saldo="${saldoPendiente.toFixed(2)}">
+                            Pagar
+                        </button>
+                    ` : `
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
+                            ✓ Pagado
+                        </span>
+                    `}
+                </div>
+            </div>
+        `
+
+        contentDiv.innerHTML = detallesHTML
+
+    } catch (error) {
+        console.error("Error al cargar detalles de venta:", error)
+        const contentDiv = document.getElementById(`full-detalles-content-${ventaId}`)
+        if (contentDiv) {
+            contentDiv.innerHTML = '<div class="text-red-500 text-sm">Error al cargar detalles</div>'
+        }
+    }
+}
+
+// Funciones globales para el historial completo
+window.toggleFullVentaDetails = function (ventaId) {
+    const detallesRow = document.getElementById(`full-detalles-${ventaId}`)
+    if (detallesRow) {
+        if (detallesRow.style.display === "none") {
+            detallesRow.style.display = "table-row"
+        } else {
+            detallesRow.style.display = "none"
+        }
+    }
+}
+
+window.payAllPendingFromModal = async function (clienteId, saldoTotal) {
+    const confirmed = await showPaymentConfirmation(saldoTotal, "el pago total de todas las deudas pendientes")
+
+    if (confirmed) {
+        try {
+            // Obtener todas las ventas con saldo pendiente
+            const ventasQuery = query(
+                collection(db, "ventas"),
+                where("clienteId", "==", clienteId)
+            )
+
+            const ventasSnapshot = await getDocs(ventasQuery)
+
+            for (const ventaDoc of ventasSnapshot.docs) {
+                const saldoInfo = await calcularSaldoPendiente(ventaDoc.id)
+
+                if (saldoInfo.saldoPendiente > 0) {
+                    // Registrar pago completo para esta venta
+                    await registrarPago(
+                        ventaDoc.id,
+                        clienteId,
+                        saldoInfo.saldoPendiente,
+                        'Pago total pendiente',
+                        'efectivo'
+                    )
+
+                    // Actualizar estado de la venta
+                    await updateDoc(doc(db, 'ventas', ventaDoc.id), {
+                        estado: 'pagada',
+                        updatedAt: serverTimestamp()
+                    })
+                }
+            }
+
+            showToast('Todos los pagos pendientes han sido registrados', 'success')
+
+            // Recargar historial
+            await loadClientHistory(clienteId)
+            await loadFullClientHistory(clienteId)
+
+        } catch (error) {
+            console.error("Error al pagar todo:", error)
+            showToast('Error al procesar los pagos', 'danger')
+        }
     }
 }
 
@@ -1387,9 +2041,9 @@ function setupClientActionEvents() {
     // Botones para eliminar clientes
     const deleteButtons = document.querySelectorAll(".delete-client")
     deleteButtons.forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
             const clientId = button.getAttribute("data-id")
-            confirmDeleteClient(clientId)
+            await confirmDeleteClient(clientId)
         })
     })
 }
@@ -1477,7 +2131,6 @@ async function loadClientHistory(clientId) {
         }
 
         historyBody.innerHTML = ""
-
         let saldoTotalPendiente = 0
 
         // Procesar cada venta
@@ -1487,83 +2140,67 @@ async function loadClientHistory(clientId) {
                 ...ventaDoc.data(),
             }
 
-            // Calcular saldo pendiente de la venta
-            const saldoInfo = await calcularSaldoPendiente(venta.id)
-            saldoTotalPendiente += saldoInfo.saldoPendiente
-
-            // Determinar estado de la venta
-            let estado = "Pendiente"
-            let estadoClass = "text-red-500"
-
-            if (saldoInfo.saldoPendiente <= 0) {
-                estado = "Pagado"
-                estadoClass = "text-green-500"
-            } else if (saldoInfo.totalAbonado > 0 || saldoInfo.totalPagado > 0) {
-                estado = "Abonado"
-                estadoClass = "text-yellow-500"
-            }
-
-            // Formatear fecha
-            const fecha = venta.fecha instanceof Timestamp ? venta.fecha.toDate() : new Date(venta.fecha)
+            // Formatear fecha de la venta
+            const fechaVenta = venta.fecha instanceof Timestamp ? venta.fecha.toDate() : new Date(venta.fecha)
 
             // Obtener información de productos
             let productosInfo = "Venta"
             if (venta.productos && venta.productos.length > 0) {
                 productosInfo = venta.productos.map((p) => p.nombreProducto).join(", ")
+                // Limitar longitud del texto
+                if (productosInfo.length > 50) {
+                    productosInfo = productosInfo.substring(0, 50) + "..."
+                }
             }
 
-            // Crear fila para la venta
+            // Determinar estado inicial
+            let estado = "Pendiente"
+            let estadoClass = "text-yellow-500"
+
+            // Crear fila principal de la venta
             const ventaRow = document.createElement("tr")
-            ventaRow.className = "hover:bg-gray-50 dark:hover:bg-gray-700"
+            ventaRow.className = "bg-gray-50 dark:bg-gray-700 font-semibold"
 
             ventaRow.innerHTML = `
-                <td class="py-2 px-4">${fecha.toLocaleDateString()}</td>
+                <td class="py-2 px-4">${fechaVenta.toLocaleDateString()}</td>
                 <td class="py-2 px-4">${productosInfo}</td>
                 <td class="py-2 px-4">
                     <span class="${estadoClass} font-semibold">${estado}</span>
                 </td>
-                <td class="py-2 px-4 flex justify-between">
-                    <span class="font-semibold">$${venta.total.toFixed(2)}</span>
-                    ${saldoInfo.saldoPendiente > 0 ? `
-                        <button class="pay-btn add-payment-btn" data-venta-id="${venta.id}" data-saldo="${saldoInfo.saldoPendiente.toFixed(2)}">
-                            <span class="btn-text">Pagar</span>
-                            <div class="icon-container">
-                                <svg viewBox="0 0 24 24" class="icon card-icon">
-                                    <path d="M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18C2,19.11 2.89,20 4,20H20C21.11,20 22,19.11 22,18V6C22,4.89 21.11,4 20,4Z" fill="currentColor"></path>
-                                </svg>
-                                <svg viewBox="0 0 24 24" class="icon payment-icon">
-                                    <path d="M2,17H22V21H2V17M6.25,7H9V6H6V3H18V6H15V7H17.75L19,17H5L6.25,7M9,10H15V8H9V10M9,13H15V11H9V13Z" fill="currentColor"></path>
-                                </svg>
-                                <svg viewBox="0 0 24 24" class="icon dollar-icon">
-                                    <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill="currentColor"></path>
-                                </svg>
-                                <svg viewBox="0 0 24 24" class="icon wallet-icon default-icon">
-                                    <path d="M21,18V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V6H12C10.89,6 10,6.9 10,8V16A2,2 0 0,0 12,18M12,16H22V8H12M16,13.5A1.5,1.5 0 0,1 14.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,12A1.5,1.5 0 0,1 16,13.5Z" fill="currentColor"></path>
-                                </svg>
-                                <svg viewBox="0 0 24 24" class="icon check-icon">
-                                    <path d="M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z" fill="currentColor"></path>
-                                </svg>
-                            </div>
-                        </button>
-                    ` : ""}
+                <td class="py-2 px-4 flex justify-between items-center">
+                    <span class="font-bold">$${venta.total.toFixed(2)}</span>
+                    <button class="text-blue-500 hover:text-blue-700 text-sm" onclick="toggleVentaDetails('${venta.id}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
                 </td>
             `
 
             historyBody.appendChild(ventaRow)
-        }
 
-        // Mostrar saldo total pendiente si hay alguno
-        if (saldoTotalPendiente > 0) {
-            const totalRow = document.createElement("tr")
-            totalRow.className = "bg-primary/10 dark:bg-primary/20 font-bold"
-
-            totalRow.innerHTML = `
-                <td class="py-3 px-4" colspan="3">SALDO TOTAL PENDIENTE</td>
-                <td class="py-3 px-4 text-red-600">$${saldoTotalPendiente.toFixed(2)}</td>
+            // Crear contenedor para los detalles de la venta
+            const detallesContainer = document.createElement("tr")
+            detallesContainer.id = `detalles-${venta.id}`
+            detallesContainer.style.display = "none"
+            detallesContainer.innerHTML = `
+                <td colspan="4" class="py-0 px-4">
+                    <div class="bg-white dark:bg-gray-800 border-l-4 border-blue-500 pl-4 py-2">
+                        <div id="detalles-content-${venta.id}">
+                            <div class="text-center text-gray-500">Cargando detalles...</div>
+                        </div>
+                    </div>
+                </td>
             `
 
-            historyBody.appendChild(totalRow)
+            historyBody.appendChild(detallesContainer)
+
+            // Cargar detalles de abonos y pagos
+            await loadVentaDetails(venta.id, venta.total, venta.abono || 0)
         }
+
+        // Calcular y mostrar saldo total pendiente
+        await calculateAndShowTotalPending(historyBody, clientId)
 
         // Configurar eventos para los botones de pago
         setupPaymentButtons(clientId)
@@ -1577,16 +2214,499 @@ async function loadClientHistory(clientId) {
     }
 }
 
+async function loadVentaDetails(ventaId, totalVenta, abonoInicial) {
+    try {
+        const contentDiv = document.getElementById(`detalles-content-${ventaId}`)
+        if (!contentDiv) return
+
+        let detallesHTML = ""
+        let totalAbonado = 0
+        let totalPagado = 0
+
+        // Agregar abono inicial si existe
+        if (abonoInicial > 0) {
+            const fechaVenta = new Date() // Usaremos la fecha de la venta
+            detallesHTML += `
+                <div class="flex justify-between items-center py-1 border-b border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">${fechaVenta.toLocaleDateString()}</span>
+                        <span class="text-sm">Abono inicial</span>
+                    </div>
+                    <span class="text-green-500 font-semibold">+$${abonoInicial.toFixed(2)}</span>
+                </div>
+            `
+            totalAbonado += abonoInicial
+        }
+
+        // Obtener abonos adicionales
+        const abonosQuery = query(
+            collection(db, "abonos"),
+            where("ventaId", "==", ventaId),
+            orderBy("fecha", "asc")
+        )
+
+        const abonosSnapshot = await getDocs(abonosQuery)
+        abonosSnapshot.forEach((doc) => {
+            const abono = doc.data()
+            // Evitar duplicar el abono inicial
+            if (abono.descripcion !== 'Abono inicial') {
+                const fechaAbono = abono.fecha instanceof Timestamp ? abono.fecha.toDate() : new Date(abono.fecha)
+                detallesHTML += `
+                    <div class="flex justify-between items-center py-1 border-b border-gray-200 dark:border-gray-600">
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">${fechaAbono.toLocaleDateString()}</span>
+                            <span class="text-sm">${abono.descripcion || 'Abono'}</span>
+                        </div>
+                        <span class="text-green-500 font-semibold">+$${abono.monto.toFixed(2)}</span>
+                    </div>
+                `
+                totalAbonado += abono.monto
+            }
+        })
+
+        // Obtener pagos
+        const pagosQuery = query(
+            collection(db, "pagos"),
+            where("ventaId", "==", ventaId),
+            orderBy("fecha", "asc")
+        )
+
+        const pagosSnapshot = await getDocs(pagosQuery)
+        pagosSnapshot.forEach((doc) => {
+            const pago = doc.data()
+            const fechaPago = pago.fecha instanceof Timestamp ? pago.fecha.toDate() : new Date(pago.fecha)
+            detallesHTML += `
+                <div class="flex justify-between items-center py-1 border-b border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">${fechaPago.toLocaleDateString()}</span>
+                        <span class="text-sm">${pago.descripcion || 'Pago'} (${pago.metodoPago || 'Efectivo'})</span>
+                    </div>
+                    <span class="text-blue-500 font-semibold">+$${pago.monto.toFixed(2)}</span>
+                </div>
+            `
+            totalPagado += pago.monto
+        })
+
+        // Calcular saldo pendiente
+        const saldoPendiente = totalVenta - totalAbonado - totalPagado
+
+        // Agregar fila de saldo pendiente
+        detallesHTML += `
+            <div class="flex justify-between items-center py-2 mt-2 bg-gray-100 dark:bg-gray-700 rounded px-2">
+                <span class="font-semibold">Saldo pendiente</span>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold ${saldoPendiente > 0 ? 'text-red-500' : 'text-green-500'}">
+                        $${saldoPendiente.toFixed(2)}
+                    </span>
+                    ${saldoPendiente > 0 ? `
+                        <button class="add-payment-btn bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1" 
+                                data-venta-id="${ventaId}" data-saldo="${saldoPendiente.toFixed(2)}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Pagar
+                        </button>
+                    ` : `
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
+                            ✓ Pagado
+                        </span>
+                    `}
+                </div>
+            </div>
+        `
+
+        contentDiv.innerHTML = detallesHTML
+
+    } catch (error) {
+        console.error("Error al cargar detalles de venta:", error)
+        const contentDiv = document.getElementById(`detalles-content-${ventaId}`)
+        if (contentDiv) {
+            contentDiv.innerHTML = '<div class="text-red-500 text-sm">Error al cargar detalles</div>'
+        }
+    }
+}
+
+async function calculateAndShowTotalPending(historyBody, clientId) {
+    try {
+        // Obtener todas las ventas del cliente
+        const ventasQuery = query(
+            collection(db, "ventas"),
+            where("clienteId", "==", clientId)
+        )
+
+        const ventasSnapshot = await getDocs(ventasQuery)
+        let saldoTotalPendiente = 0
+
+        // Calcular saldo pendiente de cada venta
+        for (const ventaDoc of ventasSnapshot.docs) {
+            const saldoInfo = await calcularSaldoPendiente(ventaDoc.id)
+            saldoTotalPendiente += saldoInfo.saldoPendiente
+        }
+
+        // Mostrar saldo total pendiente si hay alguno
+        if (saldoTotalPendiente > 0) {
+            const totalRow = document.createElement("tr")
+            totalRow.className = "bg-red-50 dark:bg-red-900/20 border-t-2 border-red-500"
+
+            totalRow.innerHTML = `
+                <td class="py-3 px-4 font-bold text-lg" colspan="3">SALDO TOTAL PENDIENTE</td>
+                <td class="py-3 px-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-red-600 font-bold text-lg">$${saldoTotalPendiente.toFixed(2)}</span>
+                        <button class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm font-semibold" 
+                                onclick="payAllPending('${clientId}', ${saldoTotalPendiente})">
+                            Pagar Todo
+                        </button>
+                    </div>
+                </td>
+            `
+
+            historyBody.appendChild(totalRow)
+        }
+
+    } catch (error) {
+        console.error("Error al calcular saldo total pendiente:", error)
+    }
+}
+
+window.toggleVentaDetails = function (ventaId) {
+    const detallesRow = document.getElementById(`detalles-${ventaId}`)
+    if (detallesRow) {
+        if (detallesRow.style.display === "none") {
+            detallesRow.style.display = "table-row"
+        } else {
+            detallesRow.style.display = "none"
+        }
+    }
+}
+
 // Función para configurar botones de pago
 function setupPaymentButtons(clientId) {
-    const paymentButtons = document.querySelectorAll(".add-payment-btn")
-    paymentButtons.forEach((button) => {
-        button.addEventListener("click", () => {
+    // Remover event listeners anteriores
+    document.querySelectorAll(".add-payment-btn").forEach(button => {
+        button.replaceWith(button.cloneNode(true))
+    })
+
+    // Agregar nuevos event listeners
+    document.querySelectorAll(".add-payment-btn").forEach((button) => {
+        button.addEventListener("click", async (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+
             const ventaId = button.getAttribute("data-venta-id")
-            showToast("Funcionalidad de pagos en desarrollo", "info")
-            // Aquí se implementaría el modal de pagos
+            const saldoPendiente = parseFloat(button.getAttribute("data-saldo"))
+
+            await openPaymentModal(ventaId, clientId, saldoPendiente)
         })
     })
+}
+
+async function openPaymentModal(ventaId, clienteId, saldoPendiente) {
+    try {
+        // Crear modal de pago si no existe
+        let paymentModal = document.getElementById('paymentModal')
+        if (!paymentModal) {
+            paymentModal = document.createElement('div')
+            paymentModal.id = 'paymentModal'
+            paymentModal.className = 'modal'
+
+            paymentModal.innerHTML = `
+                <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+                    <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                        <h3 class="text-xl font-semibold">Registrar Pago</h3>
+                        <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+                    </div>
+                    <form id="paymentForm" class="space-y-4">
+                        <input type="hidden" id="paymentVentaId">
+                        <input type="hidden" id="paymentClienteId">
+                        
+                        <div class="form-group">
+                            <label for="paymentTipo" class="block mb-1 font-medium">Tipo de pago</label>
+                            <select id="paymentTipo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                                <option value="abono">Abono</option>
+                                <option value="pago">Pago completo</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="paymentMonto" class="block mb-1 font-medium">Monto</label>
+                            <input type="number" step="0.01" id="paymentMonto" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                            <p class="text-sm text-gray-500 mt-1">Saldo pendiente: <span id="paymentSaldoPendiente"></span></p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="paymentMetodo" class="block mb-1 font-medium">Método de pago</label>
+                            <select id="paymentMetodo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="tarjeta_credito">Tarjeta de crédito</option>
+                                <option value="tarjeta_debito">Tarjeta de débito</option>
+                                <option value="transferencia">Transferencia</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="paymentFecha" class="block mb-1 font-medium">Fecha</label>
+                            <input type="date" id="paymentFecha" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="paymentDescripcion" class="block mb-1 font-medium">Descripción</label>
+                            <textarea id="paymentDescripcion" rows="2" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                            <button type="button" class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                            <button type="submit" class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Registrar pago</button>
+                        </div>
+                    </form>
+                </div>
+            `
+
+            document.body.appendChild(paymentModal)
+
+            // Configurar eventos para el modal
+            setupPaymentModalEvents(paymentModal)
+        }
+
+        // Mostrar modal y llenar datos
+        paymentModal.style.display = 'block'
+        document.getElementById('paymentVentaId').value = ventaId
+        document.getElementById('paymentClienteId').value = clienteId || ''
+        document.getElementById('paymentSaldoPendiente').textContent = `$${saldoPendiente.toFixed(2)}`
+
+        // Establecer fecha actual
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = String(today.getMonth() + 1).padStart(2, '0')
+        const day = String(today.getDate()).padStart(2, '0')
+        document.getElementById('paymentFecha').value = `${year}-${month}-${day}`
+
+        // Limpiar otros campos
+        document.getElementById('paymentTipo').value = 'abono'
+        document.getElementById('paymentMonto').value = ''
+        document.getElementById('paymentMetodo').value = 'efectivo'
+        document.getElementById('paymentDescripcion').value = ''
+
+    } catch (error) {
+        console.error("Error al abrir modal de pago:", error)
+        showToast('Error al abrir formulario de pago', 'danger')
+    }
+}
+
+function setupPaymentModalEvents(paymentModal) {
+    const closeBtn = paymentModal.querySelector('.close')
+    const closeModalBtn = paymentModal.querySelector('.close-modal')
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            paymentModal.style.display = 'none'
+        })
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            paymentModal.style.display = 'none'
+        })
+    }
+
+    // Cerrar modal al hacer clic fuera del contenido
+    paymentModal.addEventListener('click', (event) => {
+        if (event.target === paymentModal) {
+            paymentModal.style.display = 'none'
+        }
+    })
+
+    // Configurar formulario de pago
+    const paymentForm = document.getElementById('paymentForm')
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault()
+
+            try {
+                const ventaId = document.getElementById('paymentVentaId').value
+                const clienteId = document.getElementById('paymentClienteId').value
+                const tipo = document.getElementById('paymentTipo').value
+                const monto = parseFloat(document.getElementById('paymentMonto').value) || 0
+                const metodo = document.getElementById('paymentMetodo').value
+                const fecha = document.getElementById('paymentFecha').value
+                const descripcion = document.getElementById('paymentDescripcion').value
+
+                // Validar monto
+                if (monto <= 0) {
+                    showToast('El monto debe ser mayor a cero', 'warning')
+                    return
+                }
+
+                // Validar que el monto no sea mayor al saldo pendiente
+                const saldoInfo = await calcularSaldoPendiente(ventaId)
+                if (monto > saldoInfo.saldoPendiente) {
+                    showToast('El monto no puede ser mayor al saldo pendiente', 'warning')
+                    return
+                }
+
+                // Mostrar confirmación de pago
+                const confirmed = await showPaymentConfirmation(monto, `${tipo === 'abono' ? 'el abono' : 'el pago'}`)
+
+                if (!confirmed) {
+                    return
+                }
+
+                // Registrar pago o abono
+                if (tipo === 'abono') {
+                    await registrarAbono(ventaId, clienteId, monto, descripcion || 'Abono', metodo, fecha ? new Date(fecha) : new Date())
+                } else {
+                    await registrarPago(ventaId, clienteId, monto, descripcion || 'Pago', metodo, fecha ? new Date(fecha) : new Date())
+                }
+
+                // Actualizar estado de la venta
+                const nuevoSaldoInfo = await calcularSaldoPendiente(ventaId)
+                let nuevoEstado = 'pendiente'
+
+                if (nuevoSaldoInfo.saldoPendiente <= 0) {
+                    nuevoEstado = 'pagada'
+                } else if (nuevoSaldoInfo.totalAbonado > 0) {
+                    nuevoEstado = 'parcial'
+                }
+
+                await updateDoc(doc(db, 'ventas', ventaId), {
+                    estado: nuevoEstado,
+                    updatedAt: serverTimestamp()
+                })
+
+                showToast(`${tipo === 'abono' ? 'Abono' : 'Pago'} registrado correctamente`, 'success')
+
+                // Cerrar modal
+                paymentModal.style.display = 'none'
+
+                // Recargar historial del cliente
+                await loadClientHistory(currentClient.id)
+
+            } catch (error) {
+                console.error(`Error al registrar ${tipo === 'abono' ? 'abono' : 'pago'}:`, error)
+                showToast(`Error al registrar ${tipo === 'abono' ? 'abono' : 'pago'}`, 'danger')
+            }
+        })
+    }
+
+    // Configurar evento para cambiar tipo de pago
+    const paymentTipo = document.getElementById('paymentTipo')
+    const paymentMonto = document.getElementById('paymentMonto')
+
+    if (paymentTipo && paymentMonto) {
+        paymentTipo.addEventListener('change', async () => {
+            const tipo = paymentTipo.value
+            const ventaId = document.getElementById('paymentVentaId').value
+
+            if (tipo === 'pago') {
+                // Establecer monto igual al saldo pendiente
+                const saldoInfo = await calcularSaldoPendiente(ventaId)
+                paymentMonto.value = saldoInfo.saldoPendiente.toFixed(2)
+            } else {
+                // Limpiar monto
+                paymentMonto.value = ''
+            }
+        })
+    }
+}
+
+async function registrarAbono(ventaId, clienteId, monto, descripcion = 'Abono', metodoPago = 'efectivo', fecha = new Date()) {
+    try {
+        const abonoData = {
+            ventaId,
+            clienteId: clienteId || null,
+            monto,
+            descripcion,
+            metodoPago,
+            fecha: fecha,
+            createdAt: serverTimestamp()
+        }
+
+        const abonoRef = await addDoc(collection(db, 'abonos'), abonoData)
+
+        if (clienteId) {
+            await updateDoc(doc(db, 'clientes', clienteId), {
+                ultimaVisita: serverTimestamp()
+            })
+        }
+
+        return abonoRef.id
+    } catch (error) {
+        console.error("Error al registrar abono:", error)
+        throw error
+    }
+}
+
+async function registrarPago(ventaId, clienteId, monto, descripcion = 'Pago', metodoPago = 'efectivo', fecha = new Date()) {
+    try {
+        const pagoData = {
+            ventaId,
+            clienteId: clienteId || null,
+            monto,
+            descripcion,
+            metodoPago,
+            fecha: fecha,
+            createdAt: serverTimestamp()
+        }
+
+        const pagoRef = await addDoc(collection(db, 'pagos'), pagoData)
+
+        if (clienteId) {
+            await updateDoc(doc(db, 'clientes', clienteId), {
+                ultimaVisita: serverTimestamp()
+            })
+        }
+
+        return pagoRef.id
+    } catch (error) {
+        console.error("Error al registrar pago:", error)
+        throw error
+    }
+}
+
+window.payAllPending = async function (clienteId, saldoTotal) {
+    const confirmed = await showPaymentConfirmation(saldoTotal, "el pago total de todas las deudas pendientes")
+
+    if (confirmed) {
+        try {
+            // Obtener todas las ventas con saldo pendiente
+            const ventasQuery = query(
+                collection(db, "ventas"),
+                where("clienteId", "==", clienteId)
+            )
+
+            const ventasSnapshot = await getDocs(ventasQuery)
+
+            for (const ventaDoc of ventasSnapshot.docs) {
+                const saldoInfo = await calcularSaldoPendiente(ventaDoc.id)
+
+                if (saldoInfo.saldoPendiente > 0) {
+                    // Registrar pago completo para esta venta
+                    await registrarPago(
+                        ventaDoc.id,
+                        clienteId,
+                        saldoInfo.saldoPendiente,
+                        'Pago total pagado',
+                        'efectivo'
+                    )
+
+                    // Actualizar estado de la venta
+                    await updateDoc(doc(db, 'ventas', ventaDoc.id), {
+                        estado: 'pagada',
+                        updatedAt: serverTimestamp()
+                    })
+                }
+            }
+
+            showToast('Todos los pagos pendientes han sido registrados', 'success')
+
+            // Recargar historial
+            await loadClientHistory(clienteId)
+
+        } catch (error) {
+            console.error("Error al pagar todo:", error)
+            showToast('Error al procesar los pagos', 'danger')
+        }
+    }
 }
 
 // Función para editar un cliente
@@ -1610,10 +2730,46 @@ async function editClient(clientId) {
     }
 }
 
-// Función para confirmar eliminación de un cliente
-function confirmDeleteClient(clientId) {
-    if (confirm("¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.")) {
-        deleteClient(clientId)
+// Función para confirmar eliminación de un cliente con doble verificación
+async function confirmDeleteClient(clientId) {
+    try {
+        // Obtener información del cliente
+        const docRef = doc(db, "clientes", clientId)
+        const docSnap = await getDoc(docRef)
+
+        if (!docSnap.exists()) {
+            showToast("No se encontró el cliente", "danger")
+            return
+        }
+
+        const cliente = docSnap.data()
+
+        // Primera confirmación
+        const firstConfirm = await showConfirmDialog(
+            "Eliminar Cliente",
+            `¿Está seguro de que desea eliminar al cliente "${cliente.nombre}"?`,
+            "Sí, eliminar",
+            "Cancelar",
+            "warning"
+        )
+
+        if (firstConfirm) {
+            // Segunda confirmación
+            const secondConfirm = await showConfirmDialog(
+                "Confirmación Final",
+                `Esta acción eliminará permanentemente al cliente "${cliente.nombre}" y no se puede deshacer. ¿Está completamente seguro?`,
+                "Eliminar definitivamente",
+                "Cancelar",
+                "danger"
+            )
+
+            if (secondConfirm) {
+                await deleteClient(clientId)
+            }
+        }
+    } catch (error) {
+        console.error("Error al confirmar eliminación:", error)
+        showToast("Error al procesar la eliminación", "danger")
     }
 }
 
@@ -1622,7 +2778,8 @@ async function deleteClient(clientId) {
     try {
         await deleteDoc(doc(db, "clientes", clientId))
         showToast("Cliente eliminado correctamente", "success")
-        loadClientes()
+        resetPagination()
+        await loadClientes()
     } catch (error) {
         console.error("Error al eliminar cliente:", error)
         showToast("Error al eliminar el cliente", "danger")
@@ -1644,10 +2801,13 @@ async function calcularSaldoPendiente(ventaId) {
         const abonosQuery = query(collection(db, "abonos"), where("ventaId", "==", ventaId))
         const abonosSnapshot = await getDocs(abonosQuery)
 
-        let totalAbonado = 0
+        let totalAbonado = venta.abono || 0 // Incluir abono inicial
         abonosSnapshot.forEach((doc) => {
             const abono = doc.data()
-            totalAbonado += abono.monto
+            // Evitar contar el abono inicial dos veces
+            if (abono.descripcion !== 'Abono inicial') {
+                totalAbonado += abono.monto
+            }
         })
 
         // Obtener pagos
