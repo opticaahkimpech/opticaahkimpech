@@ -1,8 +1,8 @@
-import { 
-    collection, 
-    getDocs, 
-    doc, 
-    getDoc, 
+import {
+    collection,
+    getDocs,
+    doc,
+    getDoc,
     deleteDoc,
     addDoc,
     updateDoc,
@@ -22,12 +22,17 @@ import { checkAndCreateInventoryCollection } from "./auth-check.js";
 // Variables globales
 let currentSale = null;
 let lastVisible = null;
+let currentPage = 1;
+let totalPages = 1;
 const SALES_PER_PAGE = 10;
 let clientes = [];
 let productos = [];
 let armazones = [];
 let empresas = [];
 let currentClientId = null;
+let searchTimeout = null;
+let allVentas = [];
+let filteredVentas = [];
 
 // Filtros activos
 let filtrosVentas = {
@@ -35,24 +40,21 @@ let filtrosVentas = {
     estado: '',
     fechaInicio: '',
     fechaFin: '',
+    convenio: '',
     busqueda: ''
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Página de ventas cargada');
-    
+
     try {
-        // Verificar autenticación (esto ya lo hace auth-check.js)
-        
-        // Verificar colecciones de inventario (reusando la función existente)
+        // Verificar autenticación
         await checkAndCreateInventoryCollection();
-        
-        // Verificar y crear colecciones específicas para ventas
         await checkAndCreateVentasCollection();
-        
-        // Verificar si hay un cliente en la URL (para ventas desde la página de clientes)
+
+        // Verificar si hay un cliente en la URL
         checkClienteFromURL();
-        
+
         // Cargar datos necesarios
         await Promise.all([
             loadClientes(),
@@ -60,19 +62,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadArmazones(),
             loadEmpresas()
         ]);
-        
-        // Configurar eventos para los modales
+
+        // Configurar eventos
         setupModalEvents();
-        
-        // Configurar eventos para los formularios
         setupFormEvents();
-        
-        // Configurar eventos para las búsquedas
         setupSearchEvents();
-        
+        setupFilterEvents();
+        setupPaginationEvents();
+
         // Cargar datos iniciales de ventas
         await loadVentas();
-        
+
     } catch (error) {
         console.error("Error al inicializar la página de ventas:", error);
         showToast('Error al cargar la página de ventas', 'danger');
@@ -83,41 +83,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function checkAndCreateVentasCollection() {
     try {
         console.log("Verificando colecciones de ventas...");
-        
-        // Verificar si existe la colección de ventas
-        const ventasSnapshot = await getDocs(collection(db, 'ventas'));
-        if (ventasSnapshot.empty) {
-            console.log("Creando colección de ventas...");
-            // No es necesario crear un documento placeholder, la colección se creará automáticamente
-            // al agregar la primera venta
+
+        // Verificar colecciones necesarias
+        const collections = ['ventas', 'abonos', 'pagos'];
+
+        for (const collectionName of collections) {
+            const snapshot = await getDocs(collection(db, collectionName));
+            if (snapshot.empty) {
+                console.log(`Creando colección de ${collectionName}...`);
+            }
         }
-        
-        // Verificar si existe la colección de abonos
-        const abonosSnapshot = await getDocs(collection(db, 'abonos'));
-        if (abonosSnapshot.empty) {
-            console.log("Creando colección de abonos...");
-            // No es necesario crear un documento placeholder
-        }
-        
-        // Verificar si existe la colección de pagos
-        const pagosSnapshot = await getDocs(collection(db, 'pagos'));
-        if (pagosSnapshot.empty) {
-            console.log("Creando colección de pagos...");
-            // No es necesario crear un documento placeholder
-        }
-        
-        // Verificar si existe la colección de métodos de pago
+
+        // Crear métodos de pago iniciales si no existen
         const metodosPagoSnapshot = await getDocs(collection(db, 'metodosPago'));
         if (metodosPagoSnapshot.empty) {
-            console.log("Creando colección de métodos de pago...");
-            // Crear métodos de pago iniciales
             const metodosPagoIniciales = [
                 { nombre: 'Efectivo', descripcion: 'Pago en efectivo' },
                 { nombre: 'Tarjeta de crédito', descripcion: 'Pago con tarjeta de crédito' },
                 { nombre: 'Tarjeta de débito', descripcion: 'Pago con tarjeta de débito' },
                 { nombre: 'Transferencia', descripcion: 'Pago por transferencia bancaria' }
             ];
-            
+
             for (const metodoPago of metodosPagoIniciales) {
                 await addDoc(collection(db, 'metodosPago'), {
                     ...metodoPago,
@@ -125,7 +111,7 @@ async function checkAndCreateVentasCollection() {
                 });
             }
         }
-        
+
         console.log("Verificación de colecciones de ventas completada");
     } catch (error) {
         console.error("Error al verificar o crear colecciones de ventas:", error);
@@ -137,12 +123,11 @@ async function checkAndCreateVentasCollection() {
 function checkClienteFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const clientId = urlParams.get('clientId');
-    
+
     if (clientId) {
         currentClientId = clientId;
         console.log("Cliente seleccionado desde URL:", currentClientId);
-        
-        // Abrir modal de nueva venta automáticamente
+
         setTimeout(() => {
             const addSaleBtn = document.getElementById('addSaleBtn');
             if (addSaleBtn) {
@@ -157,38 +142,14 @@ async function loadClientes() {
     try {
         const clientesSnapshot = await getDocs(collection(db, 'clientes'));
         clientes = [];
-        
+
         clientesSnapshot.forEach(doc => {
             clientes.push({
                 id: doc.id,
                 ...doc.data()
             });
         });
-        
-        // Actualizar el selector de clientes en el formulario de venta
-        const clienteIdSelect = document.getElementById('clienteId');
-        if (clienteIdSelect) {
-            clienteIdSelect.innerHTML = '<option value="">Venta de mostrador</option>';
-            clientes.forEach(cliente => {
-                const option = document.createElement('option');
-                option.value = cliente.id;
-                option.textContent = cliente.nombre;
-                
-                // Si hay un cliente seleccionado desde la URL, seleccionarlo
-                if (cliente.id === currentClientId) {
-                    option.selected = true;
-                }
-                
-                clienteIdSelect.appendChild(option);
-            });
-            
-            // Disparar el evento change para actualizar la información de convenio
-            if (currentClientId) {
-                const event = new Event('change');
-                clienteIdSelect.dispatchEvent(event);
-            }
-        }
-        
+
         console.log("Clientes cargados:", clientes.length);
     } catch (error) {
         console.error("Error al cargar clientes:", error);
@@ -201,9 +162,8 @@ async function loadProductos() {
     try {
         const productosSnapshot = await getDocs(collection(db, 'productos'));
         productos = [];
-        
+
         productosSnapshot.forEach(doc => {
-            // Excluir el documento placeholder
             if (doc.id !== 'placeholder' && !doc.data().isPlaceholder) {
                 productos.push({
                     id: doc.id,
@@ -211,7 +171,7 @@ async function loadProductos() {
                 });
             }
         });
-        
+
         console.log("Productos cargados:", productos.length);
     } catch (error) {
         console.error("Error al cargar productos:", error);
@@ -224,9 +184,8 @@ async function loadArmazones() {
     try {
         const armazonesSnapshot = await getDocs(collection(db, 'armazones'));
         armazones = [];
-        
+
         armazonesSnapshot.forEach(doc => {
-            // Excluir el documento placeholder
             if (doc.id !== 'placeholder' && !doc.data().isPlaceholder) {
                 armazones.push({
                     id: doc.id,
@@ -234,7 +193,7 @@ async function loadArmazones() {
                 });
             }
         });
-        
+
         console.log("Armazones cargados:", armazones.length);
     } catch (error) {
         console.error("Error al cargar armazones:", error);
@@ -247,14 +206,14 @@ async function loadEmpresas() {
     try {
         const empresasSnapshot = await getDocs(collection(db, 'empresas'));
         empresas = [];
-        
+
         empresasSnapshot.forEach(doc => {
             empresas.push({
                 id: doc.id,
                 ...doc.data()
             });
         });
-        
+
         console.log("Empresas cargadas:", empresas.length);
     } catch (error) {
         console.error("Error al cargar empresas:", error);
@@ -262,112 +221,157 @@ async function loadEmpresas() {
     }
 }
 
-// Función para mostrar notificaciones toast
-function showToast(message, type = 'info') {
-    // Crear contenedor de toast si no existe
+// Función para mostrar notificaciones toast mejorada
+function showToast(message, type = 'info', duration = 5000) {
     let toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) {
         toastContainer = document.createElement('div');
         toastContainer.id = 'toastContainer';
-        toastContainer.className = 'fixed top-4 right-4 z-50 max-w-xs';
+        toastContainer.className = 'fixed top-4 right-4 z-50 max-w-xs space-y-2';
         document.body.appendChild(toastContainer);
     }
-    
+
     const toast = document.createElement('div');
-    toast.className = `bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 mb-3 flex items-center justify-between border-l-4 ${
-        type === 'success' ? 'border-green-500' : 
-        type === 'danger' ? 'border-red-500' : 
-        type === 'warning' ? 'border-yellow-500' : 'border-blue-500'
-    }`;
-    
+    const typeClasses = {
+        success: 'bg-green-500 border-green-600',
+        danger: 'bg-red-500 border-red-600',
+        warning: 'bg-yellow-500 border-yellow-600',
+        info: 'bg-blue-500 border-blue-600'
+    };
+
+    toast.className = `${typeClasses[type]} text-white px-4 py-3 rounded-lg shadow-lg border-l-4 transform transition-all duration-300 ease-in-out`;
+    toast.style.transform = 'translateX(100%)';
+
     toast.innerHTML = `
-        <div class="flex items-center">
-            <span class="${
-                type === 'success' ? 'text-green-500' : 
-                type === 'danger' ? 'text-red-500' : 
-                type === 'warning' ? 'text-yellow-500' : 'text-blue-500'
-            }">${message}</span>
+        <div class="flex items-center justify-between">
+            <span class="text-sm font-medium">${message}</span>
+            <button type="button" class="ml-3 text-white hover:text-gray-200 transition-colors">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
-        <button type="button" class="ml-4 text-gray-400 hover:text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
     `;
-    
+
     toastContainer.appendChild(toast);
-    
-    // Agregar evento para cerrar el toast
+
+    // Animar entrada
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 10);
+
+    // Configurar botón de cerrar
     const closeBtn = toast.querySelector('button');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            toast.remove();
+    closeBtn.addEventListener('click', () => {
+        removeToast(toast);
+    });
+
+    // Auto-cerrar
+    setTimeout(() => {
+        removeToast(toast);
+    }, duration);
+}
+
+function removeToast(toast) {
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 300);
+}
+
+// Función para mostrar alertas personalizadas
+function showCustomAlert(title, message, type = 'info', confirmCallback = null) {
+    const alertContainer = document.getElementById('customAlertContainer');
+
+    const alertModal = document.createElement('div');
+    alertModal.className = 'modal custom-alert-modal';
+    alertModal.style.display = 'block';
+
+    const typeIcons = {
+        success: '<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>',
+        danger: '<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
+        warning: '<svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
+        info: '<svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+    };
+
+    alertModal.innerHTML = `
+        <div class="custom-alert-content">
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0 mr-3">
+                        ${typeIcons[type]}
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">${title}</h3>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300 mb-6">${message}</p>
+                <div class="flex justify-end space-x-3">
+                    ${confirmCallback ? `
+                        <button class="cancel-btn px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                            Cancelar
+                        </button>
+                        <button class="confirm-btn px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors">
+                            Confirmar
+                        </button>
+                    ` : `
+                        <button class="ok-btn px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded transition-colors">
+                            Entendido
+                        </button>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+
+    alertContainer.appendChild(alertModal);
+
+    // Configurar eventos
+    const cancelBtn = alertModal.querySelector('.cancel-btn');
+    const confirmBtn = alertModal.querySelector('.confirm-btn');
+    const okBtn = alertModal.querySelector('.ok-btn');
+
+    const closeAlert = () => {
+        alertModal.style.display = 'none';
+        setTimeout(() => {
+            if (alertContainer.contains(alertModal)) {
+                alertContainer.removeChild(alertModal);
+            }
+        }, 300);
+    };
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeAlert);
+    }
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            closeAlert();
+            if (confirmCallback) confirmCallback();
         });
     }
-    
-    // Cerrar automáticamente después de 5 segundos
-    setTimeout(() => {
-        if (toastContainer.contains(toast)) {
-            toast.remove();
+
+    if (okBtn) {
+        okBtn.addEventListener('click', closeAlert);
+    }
+
+    // Cerrar al hacer clic fuera
+    alertModal.addEventListener('click', (e) => {
+        if (e.target === alertModal) {
+            closeAlert();
         }
-    }, 5000);
+    });
 }
 
 // Configurar eventos para los modales
 function setupModalEvents() {
-    // Configurar botón para agregar venta
     const addSaleBtn = document.getElementById('addSaleBtn');
     if (addSaleBtn) {
         addSaleBtn.addEventListener('click', () => {
-            // Mostrar modal de venta
-            const modal = document.getElementById('saleModal');
-            if (modal) {
-                modal.style.display = 'block';
-                document.getElementById('modalTitle').textContent = 'Registrar Nueva Venta';
-                
-                // Limpiar formulario
-                document.getElementById('saleForm').reset();
-                document.getElementById('saleId').value = '';
-                
-                // Establecer fecha actual
-                const today = new Date();
-                const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const day = String(today.getDate()).padStart(2, '0');
-                document.getElementById('fechaVenta').value = `${year}-${month}-${day}`;
-                
-                // Limpiar contenedor de productos
-                const productosContainer = document.getElementById('productosContainer');
-                if (productosContainer) {
-                    productosContainer.innerHTML = '';
-                    // Agregar el primer producto
-                    addProductoItem();
-                }
-                
-                // Deshabilitar checkbox de convenio
-                const esConvenio = document.getElementById('esConvenio');
-                const infoConvenio = document.getElementById('infoConvenio');
-                if (esConvenio && infoConvenio) {
-                    esConvenio.checked = false;
-                    infoConvenio.style.display = 'none';
-                }
-
-                // Configurar el campo de abono según el tipo de venta
-                const clienteIdSelect = document.getElementById('clienteId');
-                const abonoGroup = document.getElementById('abonoGroup');
-                if (clienteIdSelect && abonoGroup) {
-                    if (!clienteIdSelect.value) {
-                        // Venta de mostrador - ocultar campo de abono y establecer al total
-                        abonoGroup.style.display = 'none';
-                    } else {
-                        // Venta a cliente registrado - mostrar campo de abono
-                        abonoGroup.style.display = 'block';
-                    }
-                }
-            }
+            openSaleModal();
         });
     }
-    
+
     // Configurar botones para cerrar modales
     const closeButtons = document.querySelectorAll('.close, .close-modal');
     closeButtons.forEach(button => {
@@ -377,7 +381,7 @@ function setupModalEvents() {
             });
         });
     });
-    
+
     // Cerrar modal al hacer clic fuera del contenido
     window.addEventListener('click', (event) => {
         document.querySelectorAll('.modal').forEach(modal => {
@@ -386,7 +390,7 @@ function setupModalEvents() {
             }
         });
     });
-    
+
     // Configurar botón para agregar producto
     const addProductoBtn = document.getElementById('addProductoBtn');
     if (addProductoBtn) {
@@ -396,20 +400,258 @@ function setupModalEvents() {
     }
 }
 
+// Función para abrir el modal de venta
+function openSaleModal() {
+    const modal = document.getElementById('saleModal');
+    if (modal) {
+        modal.style.display = 'block';
+        document.getElementById('modalTitle').textContent = 'Registrar Nueva Venta';
+
+        // Limpiar formulario
+        document.getElementById('saleForm').reset();
+        document.getElementById('saleId').value = '';
+
+        // Establecer fecha actual
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        document.getElementById('fechaVenta').value = `${year}-${month}-${day}`;
+
+        // Limpiar contenedor de productos
+        const productosContainer = document.getElementById('productosContainer');
+        if (productosContainer) {
+            productosContainer.innerHTML = '';
+            addProductoItem();
+        }
+
+        // Configurar selector de cliente
+        setupClientSelector();
+
+        // Ocultar información de convenio
+        const convenioInfo = document.getElementById('convenioInfo');
+        if (convenioInfo) {
+            convenioInfo.style.display = 'none';
+        }
+
+        // Si hay un cliente preseleccionado desde la URL
+        if (currentClientId) {
+            const cliente = clientes.find(c => c.id === currentClientId);
+            if (cliente) {
+                document.getElementById('clienteSelector').value = cliente.nombre;
+                document.getElementById('clienteId').value = cliente.id;
+                updateConvenioInfo(cliente);
+            }
+        }
+    }
+}
+
+// Configurar selector de cliente mejorado
+function setupClientSelector() {
+    const clienteSelector = document.getElementById('clienteSelector');
+    const clienteDropdown = document.getElementById('clienteDropdown');
+    const clienteIdInput = document.getElementById('clienteId');
+
+    if (!clienteSelector || !clienteDropdown || !clienteIdInput) return;
+
+    // Limpiar valores
+    clienteSelector.value = '';
+    clienteIdInput.value = '';
+
+    function renderDropdown(searchTerm = '') {
+        const term = searchTerm.toLowerCase();
+        const options = [{
+            id: '',
+            nombre: 'Venta de mostrador',
+            isShowroom: true
+        }];
+        const filteredClientes = clientes.filter(cliente =>
+            cliente.nombre.toLowerCase().includes(term) ||
+            cliente.telefono?.includes(term) ||
+            cliente.email?.toLowerCase().includes(term)
+        );
+        options.push(...filteredClientes);
+
+        if (options.length > 0) {
+            clienteDropdown.innerHTML = '';
+            options.forEach(option => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'client-option';
+                optionElement.innerHTML = `
+                    <div class="font-medium">${option.nombre}</div>
+                    ${!option.isShowroom ? `<div class="text-sm text-gray-500">${option.telefono || ''} ${option.email || ''}</div>` : ''}
+                `;
+                optionElement.addEventListener('click', () => {
+                    clienteSelector.value = option.nombre;
+                    clienteIdInput.value = option.id;
+                    clienteDropdown.style.display = 'none';
+                    if (option.isShowroom) {
+                        hideConvenioInfo(); // Esto limpia los descuentos y mensajes
+                    } else {
+                        updateConvenioInfo(option);
+                    }
+                    updateAbonoVisibility();
+                });
+                clienteDropdown.appendChild(optionElement);
+            });
+            clienteDropdown.style.display = 'block';
+        } else {
+            clienteDropdown.style.display = 'none';
+        }
+    }
+
+    // Configurar eventos
+    clienteSelector.addEventListener('input', (e) => {
+        renderDropdown(e.target.value);
+    });
+
+    // Mostrar dropdown al enfocar el input
+    clienteSelector.addEventListener('focus', (e) => {
+        renderDropdown(e.target.value);
+    });
+
+    // Ocultar dropdown al hacer clic fuera
+    document.addEventListener('mousedown', (e) => {
+        if (!clienteSelector.contains(e.target) && !clienteDropdown.contains(e.target)) {
+            clienteDropdown.style.display = 'none';
+        }
+    });
+
+    // Manejar teclas
+    clienteSelector.addEventListener('keydown', (e) => {
+        const options = clienteDropdown.querySelectorAll('.client-option');
+        let selectedIndex = Array.from(options).findIndex(option => option.classList.contains('selected'));
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selectedIndex < options.length - 1) {
+                if (selectedIndex >= 0) options[selectedIndex].classList.remove('selected');
+                options[selectedIndex + 1].classList.add('selected');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selectedIndex > 0) {
+                options[selectedIndex].classList.remove('selected');
+                options[selectedIndex - 1].classList.add('selected');
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0) {
+                options[selectedIndex].click();
+            }
+        } else if (e.key === 'Escape') {
+            clienteDropdown.style.display = 'none';
+        }
+    });
+}
+
+// Actualizar información de convenio
+function updateConvenioInfo(cliente) {
+    const convenioInfo = document.getElementById('convenioInfo');
+    const empresaConvenio = document.getElementById('empresaConvenio');
+    const sucursalConvenio = document.getElementById('sucursalConvenio');
+    const descuentoConvenio = document.getElementById('descuentoConvenio');
+
+    if (!convenioInfo) return;
+
+    if (cliente.convenio && cliente.empresaId) {
+        const empresa = empresas.find(e => e.id === cliente.empresaId);
+
+        if (empresa) {
+            empresaConvenio.textContent = empresa.nombre;
+            sucursalConvenio.textContent = cliente.sucursal || 'No especificada';
+            descuentoConvenio.textContent = empresa.descuento || 0;
+            convenioInfo.style.display = 'block';
+
+            // Aplicar descuento automáticamente a productos existentes
+            applyConvenioDiscountToProducts(empresa.descuento || 0);
+        }
+    } else {
+        hideConvenioInfo();
+    }
+}
+
+// Ocultar información de convenio
+function hideConvenioInfo() {
+    const convenioInfo = document.getElementById('convenioInfo');
+    if (convenioInfo) {
+        convenioInfo.style.display = 'none';
+    }
+
+    // Remover descuentos automáticos y mensajes SIEMPRE
+    const productosItems = document.querySelectorAll('.producto-item');
+    productosItems.forEach((item, index) => {
+        const descuentoInput = document.getElementById(`descuento_${index}`);
+        const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
+        if (descuentoInput) {
+            descuentoInput.value = 0;
+            delete descuentoInput.dataset.manuallySet; // Limpiar flag manual
+            descuentoInput.dispatchEvent(new Event('input'));
+        }
+        if (descuentoMsg) {
+            descuentoMsg.textContent = '';
+            descuentoMsg.style.display = 'none';
+        }
+    });
+}
+
+// Aplicar descuento de convenio a productos
+function applyConvenioDiscountToProducts(descuentoPorcentaje) {
+    const productosItems = document.querySelectorAll('.producto-item');
+
+    productosItems.forEach((item, index) => {
+        const descuentoInput = document.getElementById(`descuento_${index}`);
+        const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
+        if (descuentoInput && !descuentoInput.dataset.manuallySet) {
+            descuentoInput.value = descuentoPorcentaje;
+            descuentoInput.dispatchEvent(new Event('input'));
+            // Mostrar mensaje si hay descuento
+            if (descuentoPorcentaje > 0 && descuentoMsg) {
+                descuentoMsg.textContent = `Descuento de convenio aplicado: ${descuentoPorcentaje}%`;
+                descuentoMsg.style.display = 'block';
+            } else if (descuentoMsg) {
+                descuentoMsg.textContent = '';
+                descuentoMsg.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Actualizar visibilidad del campo abono
+function updateAbonoVisibility() {
+    const clienteId = document.getElementById('clienteId').value;
+    const abonoGroup = document.getElementById('abonoGroup');
+    const abonoInput = document.getElementById('abono');
+
+    if (abonoGroup && abonoInput) {
+        if (clienteId) {
+            // Venta a cliente registrado - mostrar campo de abono
+            abonoGroup.style.display = 'block';
+            abonoInput.value = '0';
+        } else {
+            // Venta de mostrador - ocultar campo de abono
+            abonoGroup.style.display = 'none';
+            // El abono se establecerá automáticamente al total
+            const total = document.getElementById('total').value;
+            abonoInput.value = total || '0';
+        }
+    }
+}
+
 // Función para agregar un elemento de producto al formulario
 function addProductoItem() {
     const productosContainer = document.getElementById('productosContainer');
     if (!productosContainer) return;
-    
+
     const productoIndex = document.querySelectorAll('.producto-item').length;
-    
+
     const productoItem = document.createElement('div');
     productoItem.className = 'producto-item';
     productoItem.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-            <h4 class="font-semibold">Producto ${productoIndex + 1}</h4>
+        <div class="flex justify-between items-center mb-3">
+            <h4 class="font-semibold text-lg">Producto ${productoIndex + 1}</h4>
             ${productoIndex > 0 ? `
-                <button type="button" class="remove-producto text-red-500 hover:text-red-700">
+                <button type="button" class="remove-producto text-red-500 hover:text-red-700 p-1 rounded transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -436,11 +678,24 @@ function addProductoItem() {
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="form-group">
                 <label for="cantidad_${productoIndex}" class="block mb-1 font-medium">Cantidad</label>
-                <input type="number" id="cantidad_${productoIndex}" class="cantidad w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" min="1" value="1" required>
+                <div class="quantity-controls">
+                    <button type="button" class="quantity-btn decrease-btn" data-index="${productoIndex}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                    </button>
+                    <input type="number" id="cantidad_${productoIndex}" class="cantidad quantity-input" min="1" value="1" required>
+                    <button type="button" class="quantity-btn increase-btn" data-index="${productoIndex}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="form-group">
                 <label for="precio_${productoIndex}" class="block mb-1 font-medium">Precio unitario</label>
                 <input type="number" step="0.01" id="precio_${productoIndex}" class="precio w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required readonly>
+                <span id="descuentoMsg_${productoIndex}" class="text-xs text-green-600 font-semibold" style="display:none;"></span>
             </div>
             <div class="form-group">
                 <label for="descuento_${productoIndex}" class="block mb-1 font-medium">Descuento (%)</label>
@@ -452,9 +707,9 @@ function addProductoItem() {
             </div>
         </div>
     `;
-    
+
     productosContainer.appendChild(productoItem);
-    
+
     // Configurar eventos para el nuevo producto
     setupProductoEvents(productoIndex);
 }
@@ -464,33 +719,70 @@ function setupProductoEvents(index) {
     // Evento para eliminar producto
     const removeBtn = document.querySelector(`.producto-item:nth-child(${index + 1}) .remove-producto`);
     if (removeBtn) {
-        removeBtn.addEventListener('click', function() {
+        removeBtn.addEventListener('click', function () {
             this.closest('.producto-item').remove();
             // Renumerar productos
             document.querySelectorAll('.producto-item').forEach((item, i) => {
                 item.querySelector('h4').textContent = `Producto ${i + 1}`;
             });
-            // Recalcular total
             calcularTotal();
         });
     }
-    
+
+    // Eventos para controles de cantidad
+    const decreaseBtn = document.querySelector(`.decrease-btn[data-index="${index}"]`);
+    const increaseBtn = document.querySelector(`.increase-btn[data-index="${index}"]`);
+    const cantidadInput = document.getElementById(`cantidad_${index}`);
+
+
+    if (decreaseBtn && cantidadInput) {
+        decreaseBtn.addEventListener('click', () => {
+            // Validar selección de tipo y producto
+            const tipoProducto = document.getElementById(`tipoProducto_${index}`);
+            const productoSelect = document.getElementById(`producto_${index}`);
+            if (!tipoProducto.value || !productoSelect.value) {
+                showToast('Primero selecciona el tipo y producto', 'warning');
+                return;
+            }
+            const currentValue = parseInt(cantidadInput.value) || 1;
+            if (currentValue > 1) {
+                cantidadInput.value = currentValue - 1;
+                cantidadInput.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+
+    if (increaseBtn && cantidadInput) {
+        increaseBtn.addEventListener('click', () => {
+            // Validar selección de tipo y producto
+            const tipoProducto = document.getElementById(`tipoProducto_${index}`);
+            const productoSelect = document.getElementById(`producto_${index}`);
+            if (!tipoProducto.value || !productoSelect.value) {
+                showToast('Primero selecciona el tipo y producto', 'warning');
+                return;
+            }
+            const currentValue = parseInt(cantidadInput.value) || 1;
+            const maxStock = parseInt(cantidadInput.dataset.stock) || 999;
+            if (currentValue < maxStock) {
+                cantidadInput.value = currentValue + 1;
+                cantidadInput.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+
     // Evento para cambiar tipo de producto
     const tipoProducto = document.getElementById(`tipoProducto_${index}`);
     const productoSelect = document.getElementById(`producto_${index}`);
-    
+
     if (tipoProducto && productoSelect) {
         tipoProducto.addEventListener('change', () => {
             const tipo = tipoProducto.value;
-            
-            // Habilitar/deshabilitar selector de producto
+
             productoSelect.disabled = !tipo;
             productoSelect.innerHTML = '<option value="">Seleccione producto</option>';
-            
+
             if (tipo === 'producto') {
-                // Cargar productos
                 productos.forEach(producto => {
-                    // Solo mostrar productos con stock disponible
                     if (producto.stock > 0) {
                         const option = document.createElement('option');
                         option.value = producto.id;
@@ -501,9 +793,7 @@ function setupProductoEvents(index) {
                     }
                 });
             } else if (tipo === 'armazon') {
-                // Cargar armazones
                 armazones.forEach(armazon => {
-                    // Solo mostrar armazones con stock disponible
                     if (armazon.stock > 0) {
                         const option = document.createElement('option');
                         option.value = armazon.id;
@@ -515,31 +805,34 @@ function setupProductoEvents(index) {
                 });
             }
         });
-        
+
         // Evento para seleccionar producto
         productoSelect.addEventListener('change', () => {
             const selectedOption = productoSelect.options[productoSelect.selectedIndex];
-            const precio = selectedOption.dataset.precio || 0;
-            const stock = selectedOption.dataset.stock || 0;
-            
+            const precio = parseFloat(selectedOption.dataset.precio) || 0;
+            const stock = parseInt(selectedOption.dataset.stock) || 0;
+
             // Establecer precio
             const precioInput = document.getElementById(`precio_${index}`);
             if (precioInput) {
-                precioInput.value = precio;
-                precioInput.dataset.original = precio; // Guardar precio original para descuentos
-                precioInput.readOnly = true; // Hacer el campo de solo lectura
-                
-                // Disparar evento para calcular subtotal
-                precioInput.dispatchEvent(new Event('input'));
+                precioInput.value = precio.toFixed(2);
+                precioInput.dataset.original = precio;
             }
-            
-            // Establecer stock máximo
-            const cantidadInput = document.getElementById(`cantidad_${index}`);
+
+            // Configurar cantidad y stock
             if (cantidadInput) {
                 cantidadInput.max = stock;
                 cantidadInput.dataset.stock = stock;
-                cantidadInput.value = 1; // Establecer valor predeterminado a 1
-                
+                cantidadInput.value = 1;
+
+                // Actualizar botones de cantidad
+                if (decreaseBtn) {
+                    decreaseBtn.disabled = cantidadInput.value <= 1;
+                }
+                if (increaseBtn) {
+                    increaseBtn.disabled = cantidadInput.value >= stock;
+                }
+
                 // Mostrar información de stock
                 const stockInfo = document.getElementById(`stockInfo_${index}`);
                 if (stockInfo) {
@@ -547,362 +840,344 @@ function setupProductoEvents(index) {
                     stockInfo.style.display = 'block';
                 }
             }
-        });
-        
-        // Eventos para calcular subtotal
-        const cantidadInput = document.getElementById(`cantidad_${index}`);
-        const precioInput = document.getElementById(`precio_${index}`);
-        const subtotalInput = document.getElementById(`subtotal_${index}`);
-        const descuentoInput = document.getElementById(`descuento_${index}`);
-        
-        if (cantidadInput && precioInput && subtotalInput) {
-            const calcularSubtotal = () => {
-                const cantidad = parseInt(cantidadInput.value) || 0;
-                const precio = parseFloat(precioInput.value) || 0;
-                const stock = parseInt(cantidadInput.dataset.stock) || 0;
-                
-                // Validar que la cantidad sea al menos 1
-                if (cantidad < 1) {
-                    cantidadInput.value = 1;
-                }
-                
-                // Validar que la cantidad no exceda el stock
-                if (cantidad > stock) {
-                    showToast(`No hay suficiente stock. Máximo disponible: ${stock}`, 'warning');
-                    cantidadInput.value = stock;
-                }
-                
-                // Recalcular con el valor final
-                const cantidadFinal = parseInt(cantidadInput.value) || 0;
-                const subtotal = cantidadFinal * precio;
-                subtotalInput.value = subtotal.toFixed(2);
-                
-                // Calcular total general
-                calcularTotal();
-            };
-            
-            cantidadInput.addEventListener('input', calcularSubtotal);
-            precioInput.addEventListener('input', calcularSubtotal);
-            
-            // Evento para aplicar descuento
-            if (descuentoInput) {
-                descuentoInput.addEventListener('input', () => {
-                    const descuento = parseFloat(descuentoInput.value) || 0;
-                    const precioOriginal = parseFloat(precioInput.dataset.original) || 0;
-                    
-                    if (descuento > 0 && descuento <= 100) {
-                        // Calcular precio con descuento
-                        const precioConDescuento = precioOriginal * (1 - (descuento / 100));
-                        precioInput.value = precioConDescuento.toFixed(2);
-                        
-                        // Habilitar edición manual del precio
-                        precioInput.readOnly = false;
-                    } else {
-                        // Restaurar precio original
-                        precioInput.value = precioOriginal;
-                        precioInput.readOnly = true;
+
+            // Aplicar descuento de convenio si existe
+            const clienteId = document.getElementById('clienteId').value;
+            if (clienteId) {
+                const cliente = clientes.find(c => c.id === clienteId);
+                if (cliente && cliente.convenio && cliente.empresaId) {
+                    const empresa = empresas.find(e => e.id === cliente.empresaId);
+                    if (empresa && empresa.descuento) {
+                        const descuentoInput = document.getElementById(`descuento_${index}`);
+                        if (descuentoInput && !descuentoInput.dataset.manuallySet) {
+                            descuentoInput.value = empresa.descuento;
+                            descuentoInput.dispatchEvent(new Event('input'));
+                        }
                     }
-                    
-                    // Recalcular subtotal
-                    precioInput.dispatchEvent(new Event('input'));
-                });
+                }
             }
-        }
+
+            // Calcular subtotal inicial
+            calcularSubtotal(index);
+        });
     }
+
+    // Eventos para calcular subtotal
+    const precioInput = document.getElementById(`precio_${index}`);
+    const subtotalInput = document.getElementById(`subtotal_${index}`);
+    const descuentoInput = document.getElementById(`descuento_${index}`);
+
+    if (cantidadInput) {
+        cantidadInput.addEventListener('input', () => {
+            const cantidad = parseInt(cantidadInput.value) || 1;
+            const stock = parseInt(cantidadInput.dataset.stock) || 999;
+
+            // Validar cantidad
+            if (cantidad < 1) {
+                cantidadInput.value = 1;
+            } else if (cantidad > stock) {
+                showToast(`Stock insuficiente. Máximo disponible: ${stock}`, 'warning');
+                cantidadInput.value = stock;
+            }
+
+            // Actualizar botones
+            if (decreaseBtn) {
+                decreaseBtn.disabled = parseInt(cantidadInput.value) <= 1;
+            }
+            if (increaseBtn) {
+                increaseBtn.disabled = parseInt(cantidadInput.value) >= stock;
+            }
+
+            calcularSubtotal(index);
+        });
+    }
+
+    if (descuentoInput) {
+        descuentoInput.addEventListener('input', () => {
+            const descuento = parseFloat(descuentoInput.value) || 0;
+
+            // Marcar como configurado manualmente
+            if (descuento !== 0) {
+                descuentoInput.dataset.manuallySet = 'true';
+            } else {
+                delete descuentoInput.dataset.manuallySet;
+            }
+
+            calcularSubtotal(index);
+        });
+    }
+
+    if (precioInput) {
+        precioInput.addEventListener('input', () => {
+            calcularSubtotal(index);
+        });
+    }
+}
+
+// Función para calcular subtotal de un producto
+function calcularSubtotal(index) {
+    const cantidadInput = document.getElementById(`cantidad_${index}`);
+    const precioInput = document.getElementById(`precio_${index}`);
+    const descuentoInput = document.getElementById(`descuento_${index}`);
+    const subtotalInput = document.getElementById(`subtotal_${index}`);
+
+    if (!cantidadInput || !precioInput || !subtotalInput) return;
+
+    const cantidad = parseInt(cantidadInput.value) || 0;
+    const precioOriginal = parseFloat(precioInput.dataset.original) || parseFloat(precioInput.value) || 0;
+    const descuento = parseFloat(descuentoInput?.value) || 0;
+
+    // Calcular precio con descuento
+    const precioConDescuento = precioOriginal * (1 - (descuento / 100));
+    precioInput.value = precioConDescuento.toFixed(2);
+
+    // Calcular subtotal
+    const subtotal = cantidad * precioConDescuento;
+    subtotalInput.value = subtotal.toFixed(2);
+
+    // Calcular total general
+    calcularTotal();
 }
 
 // Función para calcular el total de la venta
 function calcularTotal() {
     const subtotales = document.querySelectorAll('.subtotal');
     let total = 0;
-    
+
     subtotales.forEach(subtotal => {
         total += parseFloat(subtotal.value) || 0;
     });
-    
+
     const totalInput = document.getElementById('total');
     if (totalInput) {
         totalInput.value = total.toFixed(2);
     }
-    
-    // Actualizar abono máximo
+
+    // Actualizar abono para ventas de mostrador
+    const clienteId = document.getElementById('clienteId').value;
     const abonoInput = document.getElementById('abono');
+
+    if (!clienteId && abonoInput) {
+        abonoInput.value = total.toFixed(2);
+    }
+
+    // Actualizar límite máximo del abono
     if (abonoInput) {
         abonoInput.max = total;
-        
-        // Si es venta de mostrador, actualizar el abono automáticamente al total
-        const clienteId = document.getElementById('clienteId').value;
-        if (!clienteId) {
-            abonoInput.value = total.toFixed(2);
-        }
     }
 }
 
 // Configurar eventos para los formularios
 function setupFormEvents() {
-    // Configurar formulario de venta
     const saleForm = document.getElementById('saleForm');
     if (saleForm) {
         saleForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            try {
-                const saleId = document.getElementById('saleId').value;
-                const clienteId = document.getElementById('clienteId').value;
-                const fechaVenta = document.getElementById('fechaVenta').value;
-                const abono = parseFloat(document.getElementById('abono').value) || 0;
-                const total = parseFloat(document.getElementById('total').value) || 0;
-                const observaciones = document.getElementById('observaciones').value;
-                
-                // Validar que haya al menos un producto
-                const productosItems = document.querySelectorAll('.producto-item');
-                if (productosItems.length === 0) {
-                    showToast('Debe agregar al menos un producto', 'warning');
-                    return;
-                }
-                
-                // Validar que todos los productos tengan tipo, producto, cantidad y precio
-                let isValid = true;
-                const productos = [];
-                const productosParaActualizar = [];
-                
-                productosItems.forEach((item, index) => {
-                    const tipoProducto = document.getElementById(`tipoProducto_${index}`).value;
-                    const productoId = document.getElementById(`producto_${index}`).value;
-                    const cantidad = parseInt(document.getElementById(`cantidad_${index}`).value) || 0;
-                    const precio = parseFloat(document.getElementById(`precio_${index}`).value) || 0;
-                    const subtotal = parseFloat(document.getElementById(`subtotal_${index}`).value) || 0;
-                    const descuento = parseFloat(document.getElementById(`descuento_${index}`).value) || 0;
-                    
-                    if (!tipoProducto || !productoId || cantidad <= 0 || precio <= 0) {
-                        isValid = false;
-                        return;
-                    }
-                    
-                    // Obtener nombre del producto
-                    let nombreProducto = '';
-                    const productoSelect = document.getElementById(`producto_${index}`);
-                    if (productoSelect) {
-                        nombreProducto = productoSelect.options[productoSelect.selectedIndex].text;
-                    }
-                    
-                    productos.push({
-                        tipo: tipoProducto,
-                        productoId,
-                        nombreProducto,
-                        cantidad,
-                        precio,
-                        descuento,
-                        subtotal
-                    });
-                    
-                    // Agregar a la lista de productos para actualizar inventario
-                    productosParaActualizar.push({
-                        tipo: tipoProducto,
-                        id: productoId,
-                        cantidad
-                    });
-                });
-                
-                if (!isValid) {
-                    showToast('Por favor, complete todos los campos de productos correctamente', 'warning');
-                    return;
-                }
-                
-                // Validar abono según tipo de venta
-                if (abono > total) {
-                    showToast('El abono no puede ser mayor al total', 'warning');
-                    return;
-                }
-
-                // Para ventas de mostrador, el pago debe ser completo
-                if (!clienteId && abono < total) {
-                    showToast('Las ventas de mostrador deben pagarse completamente', 'warning');
-                    return;
-                }
-                
-                // Confirmar la reducción de stock
-                const confirmMessage = `Esta venta reducirá el stock de ${productosParaActualizar.length} producto(s). ¿Desea continuar?`;
-                if (!confirm(confirmMessage)) {
-                    return;
-                }
-                
-                // Determinar si es venta a cliente registrado o venta de mostrador
-                const esVentaCliente = !!clienteId;
-                
-                // Determinar si el cliente tiene convenio
-                let convenio = false;
-                let empresaId = null;
-                
-                if (esVentaCliente) {
-                    const cliente = clientes.find(c => c.id === clienteId);
-                    if (cliente && cliente.convenio) {
-                        convenio = true;
-                        empresaId = cliente.empresaId;
-                    }
-                }
-                
-                // Determinar estado de la venta
-                let estado = 'pendiente';
-                if (abono >= total) {
-                    estado = 'pagada';
-                } else if (abono > 0) {
-                    estado = 'parcial';
-                }
-                
-                // Crear objeto de venta
-                const ventaData = {
-                    clienteId: esVentaCliente ? clienteId : null,
-                    fecha: fechaVenta ? new Date(fechaVenta) : new Date(),
-                    productos,
-                    total,
-                    abono,
-                    saldo: total - abono,
-                    estado,
-                    convenio,
-                    empresaId,
-                    observaciones: observaciones || '',
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                };
-                
-                if (!saleId) {
-                    // Agregar nueva venta
-                    const ventaRef = await addDoc(collection(db, 'ventas'), ventaData);
-                    
-                    // Actualizar inventario
-                    await actualizarInventario(productosParaActualizar);
-                    
-                    // Si hay abono, registrarlo
-                    if (abono > 0) {
-                        await registrarAbono(ventaRef.id, clienteId, abono, 'Abono inicial');
-                    }
-                    
-                    // Si es venta a cliente registrado, actualizar última visita
-                    if (esVentaCliente) {
-                        await updateDoc(doc(db, 'clientes', clienteId), {
-                            ultimaVisita: serverTimestamp()
-                        });
-                    }
-                    
-                    showToast('Venta registrada correctamente', 'success');
-                } else {
-                    // Actualizar venta existente (esto normalmente no se debería hacer)
-                    await updateDoc(doc(db, 'ventas', saleId), ventaData);
-                    showToast('Venta actualizada correctamente', 'success');
-                }
-                
-                // Cerrar modal
-                document.getElementById('saleModal').style.display = 'none';
-                
-                // Recargar ventas
-                await loadVentas();
-                
-                // Recargar productos y armazones para actualizar stock
-                await Promise.all([
-                    loadProductos(),
-                    loadArmazones()
-                ]);
-                
-            } catch (error) {
-                console.error('Error al guardar venta:', error);
-                showToast('Error al guardar la venta', 'danger');
-            }
+            await handleSaleSubmit();
         });
-        
-        // Evento para cambiar cliente y verificar convenio
-        const clienteIdSelect = document.getElementById('clienteId');
-        if (clienteIdSelect) {
-            clienteIdSelect.addEventListener('change', () => {
-                const clienteId = clienteIdSelect.value;
-                const esConvenio = document.getElementById('esConvenio');
-                const infoConvenio = document.getElementById('infoConvenio');
-                const empresaConvenio = document.getElementById('empresaConvenio');
-                
-                if (clienteId && esConvenio && infoConvenio && empresaConvenio) {
-                    // Buscar cliente
-                    const cliente = clientes.find(c => c.id === clienteId);
-                    
-                    if (cliente && cliente.convenio) {
-                        // Cliente con convenio
-                        esConvenio.checked = true;
-                        
-                        // Buscar empresa
-                        const empresa = empresas.find(e => e.id === cliente.empresaId);
-                        if (empresa) {
-                            empresaConvenio.textContent = empresa.nombre;
-                        } else {
-                            empresaConvenio.textContent = 'Empresa no encontrada';
-                        }
-                        
-                        infoConvenio.style.display = 'block';
-                    } else {
-                        // Cliente sin convenio
-                        esConvenio.checked = false;
-                        infoConvenio.style.display = 'none';
-                    }
-                } else {
-                    // Venta de mostrador
-                    if (esConvenio) esConvenio.checked = false;
-                    if (infoConvenio) infoConvenio.style.display = 'none';
-
-                    // Mostrar/ocultar campo de abono según tipo de venta
-                    const abonoGroup = document.getElementById('abonoGroup');
-                    if (abonoGroup) {
-                        if (clienteId) {
-                            // Venta a cliente registrado - permitir abonos
-                            abonoGroup.style.display = 'block';
-                        } else {
-                            // Venta de mostrador - pago completo
-                            abonoGroup.style.display = 'none';
-                            document.getElementById('abono').value = document.getElementById('total').value;
-                        }
-                    }
-                }
-            });
-        }
     }
 }
 
-// Función para actualizar el inventario después de una venta
+// Manejar envío del formulario de venta
+async function handleSaleSubmit() {
+    try {
+        const saleId = document.getElementById('saleId').value;
+        const clienteId = document.getElementById('clienteId').value;
+        const fechaVenta = document.getElementById('fechaVenta').value;
+        const abono = parseFloat(document.getElementById('abono').value) || 0;
+        const total = parseFloat(document.getElementById('total').value) || 0;
+        const observaciones = document.getElementById('observaciones').value;
+
+        // Validar que haya al menos un producto
+        const productosItems = document.querySelectorAll('.producto-item');
+        if (productosItems.length === 0) {
+            showToast('Debe agregar al menos un producto', 'warning');
+            return;
+        }
+
+        // Validar y recopilar productos
+        const productos = [];
+        const productosParaActualizar = [];
+        let isValid = true;
+
+        for (let index = 0; index < productosItems.length; index++) {
+            const tipoProducto = document.getElementById(`tipoProducto_${index}`)?.value;
+            const productoId = document.getElementById(`producto_${index}`)?.value;
+            const cantidad = parseInt(document.getElementById(`cantidad_${index}`)?.value) || 0;
+            const precio = parseFloat(document.getElementById(`precio_${index}`)?.value) || 0;
+            const subtotal = parseFloat(document.getElementById(`subtotal_${index}`)?.value) || 0;
+            const descuento = parseFloat(document.getElementById(`descuento_${index}`)?.value) || 0;
+
+            if (!tipoProducto || !productoId || cantidad <= 0 || precio <= 0) {
+                isValid = false;
+                showToast(`Complete todos los campos del producto ${index + 1}`, 'warning');
+                break;
+            }
+
+            // Obtener nombre del producto
+            const productoSelect = document.getElementById(`producto_${index}`);
+            const nombreProducto = productoSelect?.options[productoSelect.selectedIndex]?.text || 'Producto desconocido';
+
+            productos.push({
+                tipo: tipoProducto,
+                productoId,
+                nombreProducto,
+                cantidad,
+                precio,
+                descuento,
+                subtotal
+            });
+
+            productosParaActualizar.push({
+                tipo: tipoProducto,
+                id: productoId,
+                cantidad
+            });
+        }
+
+        if (!isValid) return;
+
+        // Validar abono
+        if (abono > total) {
+            showToast('El abono no puede ser mayor al total', 'warning');
+            return;
+        }
+
+        // Para ventas de mostrador, el pago debe ser completo
+        if (!clienteId && abono < total) {
+            showToast('Las ventas de mostrador deben pagarse completamente', 'warning');
+            return;
+        }
+
+        // Confirmar la venta
+        const confirmMessage = `¿Confirmar venta por $${total.toFixed(2)}?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`;
+
+        showCustomAlert(
+            'Confirmar Venta',
+            confirmMessage,
+            'info',
+            async () => {
+                await processSale({
+                    saleId,
+                    clienteId,
+                    fechaVenta,
+                    productos,
+                    productosParaActualizar,
+                    total,
+                    abono,
+                    observaciones
+                });
+            }
+        );
+
+    } catch (error) {
+        console.error('Error al procesar venta:', error);
+        showToast('Error al procesar la venta', 'danger');
+    }
+}
+
+// Procesar la venta
+async function processSale(saleData) {
+    try {
+        const {
+            saleId,
+            clienteId,
+            fechaVenta,
+            productos,
+            productosParaActualizar,
+            total,
+            abono,
+            observaciones
+        } = saleData;
+
+        // Determinar información de convenio
+        let convenio = false;
+        let empresaId = null;
+
+        if (clienteId) {
+            const cliente = clientes.find(c => c.id === clienteId);
+            if (cliente && cliente.convenio) {
+                convenio = true;
+                empresaId = cliente.empresaId;
+            }
+        }
+
+        // Determinar estado de la venta
+        let estado = 'pendiente';
+        if (abono >= total) {
+            estado = 'pagada';
+        } else if (abono > 0) {
+            estado = 'parcial';
+        }
+
+        // Crear objeto de venta
+        const ventaData = {
+            clienteId: clienteId || null,
+            fecha: fechaVenta ? new Date(fechaVenta) : new Date(),
+            productos,
+            total,
+            abono,
+            saldo: total - abono,
+            estado,
+            convenio,
+            empresaId,
+            observaciones: observaciones || '',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+
+        // Guardar venta
+        const ventaRef = await addDoc(collection(db, 'ventas'), ventaData);
+
+        // Actualizar inventario
+        await actualizarInventario(productosParaActualizar);
+
+        // Registrar abono inicial si existe
+        if (abono > 0) {
+            await registrarAbono(ventaRef.id, clienteId, abono, 'Abono inicial');
+        }
+
+        // Actualizar última visita del cliente
+        if (clienteId) {
+            await updateDoc(doc(db, 'clientes', clienteId), {
+                ultimaVisita: serverTimestamp()
+            });
+        }
+
+        showToast('Venta registrada correctamente', 'success');
+
+        // Cerrar modal y recargar datos
+        document.getElementById('saleModal').style.display = 'none';
+        await loadVentas();
+        await Promise.all([loadProductos(), loadArmazones()]);
+
+    } catch (error) {
+        console.error('Error al guardar venta:', error);
+        showToast('Error al guardar la venta', 'danger');
+    }
+}
+
+// Función para actualizar el inventario
 async function actualizarInventario(productos) {
     try {
         for (const producto of productos) {
-            if (producto.tipo === 'producto') {
-                // Actualizar stock de producto
-                const productoRef = doc(db, 'productos', producto.id);
-                const productoDoc = await getDoc(productoRef);
-                
-                if (productoDoc.exists()) {
-                    const productoData = productoDoc.data();
-                    const nuevoStock = Math.max(0, (productoData.stock || 0) - producto.cantidad);
-                    
-                    await updateDoc(productoRef, {
-                        stock: nuevoStock,
-                        updatedAt: serverTimestamp()
-                    });
-                    
-                    console.log(`Stock de producto ${producto.id} actualizado: ${productoData.stock} -> ${nuevoStock}`);
-                }
-            } else if (producto.tipo === 'armazon') {
-                // Actualizar stock de armazón
-                const armazonRef = doc(db, 'armazones', producto.id);
-                const armazonDoc = await getDoc(armazonRef);
-                
-                if (armazonDoc.exists()) {
-                    const armazonData = armazonDoc.data();
-                    const nuevoStock = Math.max(0, (armazonData.stock || 0) - producto.cantidad);
-                    
-                    await updateDoc(armazonRef, {
-                        stock: nuevoStock,
-                        updatedAt: serverTimestamp()
-                    });
-                    
-                    console.log(`Stock de armazón ${producto.id} actualizado: ${armazonData.stock} -> ${nuevoStock}`);
-                }
+            const collectionName = producto.tipo === 'producto' ? 'productos' : 'armazones';
+            const productoRef = doc(db, collectionName, producto.id);
+            const productoDoc = await getDoc(productoRef);
+
+            if (productoDoc.exists()) {
+                const productoData = productoDoc.data();
+                const nuevoStock = Math.max(0, (productoData.stock || 0) - producto.cantidad);
+
+                await updateDoc(productoRef, {
+                    stock: nuevoStock,
+                    updatedAt: serverTimestamp()
+                });
+
+                console.log(`Stock de ${producto.tipo} ${producto.id} actualizado: ${productoData.stock} -> ${nuevoStock}`);
             }
         }
-        
+
         return true;
     } catch (error) {
         console.error("Error al actualizar inventario:", error);
@@ -910,24 +1185,230 @@ async function actualizarInventario(productos) {
     }
 }
 
-// Configurar eventos para las búsquedas
+// Función para registrar un abono
+async function registrarAbono(ventaId, clienteId, monto, descripcion = 'Abono', metodoPago = 'efectivo', fecha = new Date()) {
+    try {
+        const abonoData = {
+            ventaId,
+            clienteId: clienteId || null,
+            monto,
+            descripcion,
+            metodoPago,
+            fecha: fecha,
+            createdAt: serverTimestamp()
+        };
+
+        const abonoRef = await addDoc(collection(db, 'abonos'), abonoData);
+
+        if (clienteId) {
+            await updateDoc(doc(db, 'clientes', clienteId), {
+                ultimaVisita: serverTimestamp()
+            });
+        }
+
+        return abonoRef.id;
+    } catch (error) {
+        console.error("Error al registrar abono:", error);
+        throw error;
+    }
+}
+
+// Configurar eventos de búsqueda
 function setupSearchEvents() {
-    // Búsqueda de ventas
-    const searchVentaBtn = document.getElementById('searchVentaBtn');
     const searchVenta = document.getElementById('searchVenta');
-    
-    if (searchVentaBtn && searchVenta) {
-        searchVentaBtn.addEventListener('click', () => {
-            filtrosVentas.busqueda = searchVenta.value.trim();
-            loadVentas();
+
+    if (searchVenta) {
+        searchVenta.addEventListener('input', (e) => {
+            // Limpiar timeout anterior
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // Establecer nuevo timeout para búsqueda en tiempo real
+            searchTimeout = setTimeout(() => {
+                filtrosVentas.busqueda = e.target.value.trim();
+                currentPage = 1;
+                applyFilters();
+            }, 300); // Esperar 300ms después de que el usuario deje de escribir
         });
-        
-        searchVenta.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                filtrosVentas.busqueda = searchVenta.value.trim();
-                loadVentas();
+    }
+}
+
+// Configurar eventos de filtros
+function setupFilterEvents() {
+    const toggleFiltrosBtn = document.getElementById('toggleFiltrosBtn');
+    const filtrosPanel = document.getElementById('filtrosPanel');
+    const aplicarFiltrosBtn = document.getElementById('aplicarFiltrosBtn');
+    const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
+
+    if (toggleFiltrosBtn && filtrosPanel) {
+        toggleFiltrosBtn.addEventListener('click', () => {
+            const isVisible = filtrosPanel.style.display !== 'none';
+            filtrosPanel.style.display = isVisible ? 'none' : 'block';
+            toggleFiltrosBtn.classList.toggle('active', !isVisible);
+        });
+    }
+
+    if (aplicarFiltrosBtn) {
+        aplicarFiltrosBtn.addEventListener('click', () => {
+            applyAdvancedFilters();
+        });
+    }
+
+    if (limpiarFiltrosBtn) {
+        limpiarFiltrosBtn.addEventListener('click', () => {
+            clearFilters();
+        });
+    }
+}
+
+// Aplicar filtros avanzados
+function applyAdvancedFilters() {
+    filtrosVentas.estado = document.getElementById('filtroEstado')?.value || '';
+    filtrosVentas.convenio = document.getElementById('filtroConvenio')?.value || '';
+    filtrosVentas.fechaInicio = document.getElementById('filtroFechaInicio')?.value || '';
+    filtrosVentas.fechaFin = document.getElementById('filtroFechaFin')?.value || '';
+
+    currentPage = 1;
+    applyFilters();
+}
+
+// Limpiar filtros
+function clearFilters() {
+    document.getElementById('filtroEstado').value = '';
+    document.getElementById('filtroConvenio').value = '';
+    document.getElementById('filtroFechaInicio').value = '';
+    document.getElementById('filtroFechaFin').value = '';
+    document.getElementById('searchVenta').value = '';
+
+    filtrosVentas = {
+        cliente: '',
+        estado: '',
+        fechaInicio: '',
+        fechaFin: '',
+        convenio: '',
+        busqueda: ''
+    };
+
+    currentPage = 1;
+    applyFilters();
+}
+
+// Aplicar filtros
+function applyFilters() {
+    // Filtrar ventas en memoria
+    filteredVentas = allVentas.filter(venta => {
+        // Filtro por búsqueda
+        if (filtrosVentas.busqueda) {
+            const busqueda = filtrosVentas.busqueda.toLowerCase();
+            const matchId = venta.id.toLowerCase().includes(busqueda);
+            const matchCliente = venta.clienteId && clientes.find(c =>
+                c.id === venta.clienteId && c.nombre.toLowerCase().includes(busqueda)
+            );
+            const matchProducto = venta.productos && venta.productos.some(p =>
+                p.nombreProducto.toLowerCase().includes(busqueda)
+            );
+
+            if (!matchId && !matchCliente && !matchProducto) {
+                return false;
+            }
+        }
+
+        // Filtro por estado
+        if (filtrosVentas.estado && venta.estado !== filtrosVentas.estado) {
+            return false;
+        }
+
+        // Filtro por convenio
+        if (filtrosVentas.convenio) {
+            const hasConvenio = filtrosVentas.convenio === 'true';
+            if (venta.convenio !== hasConvenio) {
+                return false;
+            }
+        }
+
+        // Filtro por fecha
+        if (filtrosVentas.fechaInicio || filtrosVentas.fechaFin) {
+            const fechaVenta = venta.fecha instanceof Timestamp
+                ? venta.fecha.toDate()
+                : new Date(venta.fecha);
+
+            if (filtrosVentas.fechaInicio) {
+                const fechaInicio = new Date(filtrosVentas.fechaInicio);
+                if (fechaVenta < fechaInicio) {
+                    return false;
+                }
+            }
+
+            if (filtrosVentas.fechaFin) {
+                const fechaFin = new Date(filtrosVentas.fechaFin);
+                fechaFin.setHours(23, 59, 59, 999); // Incluir todo el día
+                if (fechaVenta > fechaFin) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    });
+
+    // Calcular paginación
+    totalPages = Math.ceil(filteredVentas.length / SALES_PER_PAGE);
+    if (totalPages === 0) totalPages = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    // Mostrar ventas paginadas
+    displayVentas();
+    updatePaginationControls();
+}
+
+// Configurar eventos de paginación
+function setupPaginationEvents() {
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                displayVentas();
+                updatePaginationControls();
             }
         });
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayVentas();
+                updatePaginationControls();
+            }
+        });
+    }
+}
+
+// Actualizar controles de paginación
+function updatePaginationControls() {
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const currentPageSpan = document.getElementById('currentPage');
+    const totalPagesSpan = document.getElementById('totalPages');
+
+    if (prevPageBtn) {
+        prevPageBtn.disabled = currentPage <= 1;
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.disabled = currentPage >= totalPages;
+    }
+
+    if (currentPageSpan) {
+        currentPageSpan.textContent = currentPage;
+    }
+
+    if (totalPagesSpan) {
+        totalPagesSpan.textContent = totalPages;
     }
 }
 
@@ -935,165 +1416,151 @@ function setupSearchEvents() {
 async function loadVentas() {
     const tableBody = document.getElementById('ventasTableBody');
     if (!tableBody) return;
-    
-    // Limpiar tabla
-    tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center">Cargando ventas...</td></tr>';
-    
+
+    tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center"><div class="spinner mr-2"></div>Cargando ventas...</td></tr>';
+
     try {
-        // Construir la consulta base
-        let ventasQuery = collection(db, 'ventas');
-        let queryConstraints = [];
-        
-        // Aplicar filtros si existen
-        if (filtrosVentas.cliente) {
-            queryConstraints.push(where('clienteId', '==', filtrosVentas.cliente));
+        // Cargar todas las ventas
+        const ventasQuery = query(
+            collection(db, 'ventas'),
+            orderBy('fecha', 'desc'),
+            limit(100) // Limitar a las últimas 100 ventas para rendimiento
+        );
+
+        const ventasSnapshot = await getDocs(ventasQuery);
+
+        allVentas = [];
+        for (const docSnap of ventasSnapshot.docs) {
+            const venta = {
+                id: docSnap.id,
+                ...docSnap.data()
+            };
+
+            // Calcular saldo pendiente actual
+            venta.saldoInfo = await calcularSaldoPendiente(venta.id);
+            allVentas.push(venta);
         }
-        
-        if (filtrosVentas.estado) {
-            queryConstraints.push(where('estado', '==', filtrosVentas.estado));
-        }
-        
-        // Ordenar por fecha descendente
-        queryConstraints.push(orderBy('fecha', 'desc'));
-        
-        // Limitar resultados
-        queryConstraints.push(limit(50));
-        
-        // Ejecutar la consulta
-        const q = query(ventasQuery, ...queryConstraints);
-        const ventasSnapshot = await getDocs(q);
-        
-        // Limpiar tabla
-        tableBody.innerHTML = '';
-        
-        if (ventasSnapshot.empty) {
-            tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center">No se encontraron ventas</td></tr>';
-            return;
-        }
-        
-        // Filtrar por búsqueda en memoria (para búsquedas más complejas)
-        let ventas = [];
-        ventasSnapshot.forEach(doc => {
-            ventas.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-        
-        if (filtrosVentas.busqueda) {
-            const busqueda = filtrosVentas.busqueda.toLowerCase();
-            ventas = ventas.filter(venta => {
-                // Buscar por ID
-                if (venta.id.toLowerCase().includes(busqueda)) return true;
-                
-                // Buscar por cliente
-                if (venta.clienteId) {
-                    const cliente = clientes.find(c => c.id === venta.clienteId);
-                    if (cliente && cliente.nombre.toLowerCase().includes(busqueda)) return true;
-                }
-                
-                // Buscar por productos
-                if (venta.productos) {
-                    for (const producto of venta.productos) {
-                        if (producto.nombreProducto.toLowerCase().includes(busqueda)) return true;
-                    }
-                }
-                
-                return false;
-            });
-        }
-        
-        if (ventas.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center">No se encontraron ventas con los filtros aplicados</td></tr>';
-            return;
-        }
-        
-        // Agregar ventas a la tabla
-        for (const venta of ventas) {
-            // Formatear fecha
-            let fechaText = 'No disponible';
-            if (venta.fecha) {
-                const fecha = venta.fecha instanceof Timestamp 
-                    ? venta.fecha.toDate() 
-                    : new Date(venta.fecha);
-                fechaText = fecha.toLocaleDateString();
-            }
-            
-            // Obtener nombre del cliente
-            let clienteText = 'Venta de mostrador';
-            if (venta.clienteId) {
-                const cliente = clientes.find(c => c.id === venta.clienteId);
-                if (cliente) {
-                    clienteText = cliente.nombre;
-                } else {
-                    clienteText = 'Cliente no encontrado';
-                }
-            }
-            
-            // Calcular saldo pendiente actual (puede haber cambiado por abonos posteriores)
-            const saldoInfo = await calcularSaldoPendiente(venta.id);
-            
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
-            
-            row.innerHTML = `
-                <td class="py-3 px-4">${venta.id.substring(0, 8)}...</td>
-                <td class="py-3 px-4">${fechaText}</td>
-                <td class="py-3 px-4">${clienteText}</td>
-                <td class="py-3 px-4">$${venta.total.toFixed(2)}</td>
-                <td class="py-3 px-4">$${saldoInfo.totalAbonado.toFixed(2)}</td>
-                <td class="py-3 px-4">$${saldoInfo.saldoPendiente.toFixed(2)}</td>
-                <td class="py-3 px-4">
-                    <span class="status-${venta.estado}">${
-                        venta.estado === 'pendiente' ? 'Pendiente' :
-                        venta.estado === 'parcial' ? 'Abonado' :
-                        venta.estado === 'pagada' ? 'Pagado' :
-                        venta.estado === 'cancelada' ? 'Cancelado' : 'Desconocido'
-                    }</span>
-                </td>
-                <td class="py-3 px-4">
-                    ${venta.convenio ? 
-                        `<span class="badge badge-success">Sí</span>` : 
-                        `<span class="badge badge-secondary">No</span>`
-                    }
-                </td>
-                <td class="py-3 px-4">
-                    <div class="flex space-x-2">
-                        <button class="view-sale text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" data-id="${venta.id}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                        </button>
-                        ${saldoInfo.saldoPendiente > 0 ? `
-                            <button class="add-payment text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300" data-id="${venta.id}" data-cliente="${venta.clienteId || ''}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                            </button>
-                        ` : ''}
-                        ${venta.estado !== 'cancelada' ? `
-                            <button class="cancel-sale text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-id="${venta.id}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        ` : ''}
-                    </div>
-                </td>
-            `;
-            
-            tableBody.appendChild(row);
-        }
-        
-        // Configurar eventos para los botones de ver, agregar pago y cancelar
-        setupSaleEvents();
-        
+
+        // Aplicar filtros y mostrar
+        applyFilters();
+
     } catch (error) {
         console.error("Error al cargar ventas:", error);
         tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center text-red-500">Error al cargar ventas</td></tr>';
         showToast('Error al cargar ventas', 'danger');
     }
+}
+
+// Mostrar ventas en la tabla
+function displayVentas() {
+    const tableBody = document.getElementById('ventasTableBody');
+    if (!tableBody) return;
+
+    // Calcular índices para paginación
+    const startIndex = (currentPage - 1) * SALES_PER_PAGE;
+    const endIndex = startIndex + SALES_PER_PAGE;
+    const ventasPagina = filteredVentas.slice(startIndex, endIndex);
+
+    // Limpiar tabla
+    tableBody.innerHTML = '';
+
+    if (ventasPagina.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center">No se encontraron ventas</td></tr>';
+        return;
+    }
+
+    // Agregar ventas a la tabla
+    ventasPagina.forEach(venta => {
+        const row = createVentaRow(venta);
+        tableBody.appendChild(row);
+    });
+
+    // Configurar eventos para los botones
+    setupSaleEvents();
+}
+
+// Crear fila de venta
+function createVentaRow(venta) {
+    // Formatear fecha
+    let fechaText = 'No disponible';
+    if (venta.fecha) {
+        const fecha = venta.fecha instanceof Timestamp
+            ? venta.fecha.toDate()
+            : new Date(venta.fecha);
+        fechaText = fecha.toLocaleDateString();
+    }
+
+    // Obtener nombre del cliente
+    let clienteText = 'Venta de mostrador';
+    if (venta.clienteId) {
+        const cliente = clientes.find(c => c.id === venta.clienteId);
+        clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
+    }
+
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+
+    row.innerHTML = `
+        <td class="py-3 px-4 font-mono text-sm">${venta.id.substring(0, 8)}...</td>
+        <td class="py-3 px-4">${fechaText}</td>
+        <td class="py-3 px-4">${clienteText}</td>
+        <td class="py-3 px-4 font-semibold">$${venta.total.toFixed(2)}</td>
+        <td class="py-3 px-4 text-green-600">$${venta.saldoInfo.totalAbonado.toFixed(2)}</td>
+        <td class="py-3 px-4 ${venta.saldoInfo.saldoPendiente > 0 ? 'text-red-600' : 'text-green-600'}">
+            $${venta.saldoInfo.saldoPendiente.toFixed(2)}
+        </td>
+        <td class="py-3 px-4">
+            <span class="status-${venta.estado}">
+                ${getEstadoText(venta.estado)}
+            </span>
+        </td>
+        <td class="py-3 px-4">
+            ${venta.convenio ?
+            '<span class="badge badge-success">Sí</span>' :
+            '<span class="badge badge-secondary">No</span>'
+        }
+        </td>
+        <td class="py-3 px-4">
+            <div class="flex space-x-1">
+                <button class="view-sale p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors" 
+                        data-id="${venta.id}" title="Ver detalles">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+                ${venta.saldoInfo.saldoPendiente > 0 && venta.estado !== 'cancelada' ? `
+                    <button class="add-payment p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors" 
+                            data-id="${venta.id}" data-cliente="${venta.clienteId || ''}" title="Agregar pago">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                ` : ''}
+                ${venta.estado !== 'cancelada' ? `
+                    <button class="cancel-sale p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors" 
+                            data-id="${venta.id}" title="Cancelar venta">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                ` : ''}
+            </div>
+        </td>
+    `;
+
+    return row;
+}
+
+// Obtener texto del estado
+function getEstadoText(estado) {
+    const estados = {
+        'pendiente': 'Pendiente',
+        'parcial': 'Abonado',
+        'pagada': 'Pagado',
+        'cancelada': 'Cancelado'
+    };
+    return estados[estado] || 'Desconocido';
 }
 
 // Configurar eventos para las ventas
@@ -1106,7 +1573,7 @@ function setupSaleEvents() {
             viewSale(saleId);
         });
     });
-    
+
     // Configurar botones para agregar pagos
     const addPaymentButtons = document.querySelectorAll('.add-payment');
     addPaymentButtons.forEach(button => {
@@ -1116,7 +1583,7 @@ function setupSaleEvents() {
             addPayment(saleId, clienteId);
         });
     });
-    
+
     // Configurar botones para cancelar ventas
     const cancelButtons = document.querySelectorAll('.cancel-sale');
     cancelButtons.forEach(button => {
@@ -1130,402 +1597,19 @@ function setupSaleEvents() {
 // Función para ver una venta
 async function viewSale(saleId) {
     try {
-        // Obtener datos de la venta
         const docRef = doc(db, 'ventas', saleId);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
             const venta = docSnap.data();
             currentSale = {
                 id: saleId,
                 ...venta
             };
-            
-            // Crear modal de detalle de venta si no existe
-            let saleDetailModal = document.getElementById('saleDetailModal');
-            if (!saleDetailModal) {
-                saleDetailModal = document.createElement('div');
-                saleDetailModal.id = 'saleDetailModal';
-                saleDetailModal.className = 'modal';
-                
-                saleDetailModal.innerHTML = `
-                    <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
-                        <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
-                            <h3 class="text-xl font-semibold">Detalle de Venta</h3>
-                            <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
-                        </div>
-                        
-                        <div class="sale-details space-y-6">
-                            <!-- Información general -->
-                            <div class="general-info bg-lightGray dark:bg-gray-700 p-5 rounded-lg">
-                                <div class="grid md:grid-cols-2 gap-x-4 gap-y-2">
-                                    <div class="mb-2">
-                                        <p><span class="font-semibold">ID Venta:</span> <span id="detailSaleId"></span></p>
-                                    </div>
-                                    <div class="mb-2">
-                                        <p><span class="font-semibold">Fecha:</span> <span id="detailSaleDate"></span></p>
-                                    </div>
-                                    <div class="mb-2">
-                                        <p><span class="font-semibold">Cliente:</span> <span id="detailSaleClient"></span></p>
-                                    </div>
-                                    <div class="mb-2">
-                                        <p><span class="font-semibold">Estado:</span> <span id="detailSaleStatus"></span></p>
-                                    </div>
-                                    <div class="mb-2" id="detailConvenioContainer">
-                                        <p><span class="font-semibold">Convenio:</span> <span id="detailSaleConvenio"></span></p>
-                                    </div>
-                                    <div class="mb-2" id="detailEmpresaContainer">
-                                        <p><span class="font-semibold">Empresa:</span> <span id="detailSaleEmpresa"></span></p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Productos -->
-                            <div>
-                                <h4 class="text-lg font-semibold mb-3">Productos</h4>
-                                <div class="overflow-x-auto">
-                                    <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
-                                        <thead>
-                                            <tr>
-                                                <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Producto</th>
-                                                <th class="py-2 px-4 text-left bg-primary text-white">Cantidad</th>
-                                                <th class="py-2 px-4 text-left bg-primary text-white">Precio</th>
-                                                <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="detailProductsBody" class="divide-y divide-mediumGray dark:divide-gray-700">
-                                            <!-- Products will be loaded dynamically -->
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="font-bold">
-                                                <td class="py-2 px-4" colspan="3">Total</td>
-                                                <td class="py-2 px-4" id="detailSaleTotal"></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <!-- Pagos -->
-                            <div>
-                                <h4 class="text-lg font-semibold mb-3">Pagos y Abonos</h4>
-                                <div class="overflow-x-auto">
-                                    <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
-                                        <thead>
-                                            <tr>
-                                                <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Fecha</th>
-                                                <th class="py-2 px-4 text-left bg-primary text-white">Tipo</th>
-                                                <th class="py-2 px-4 text-left bg-primary text-white">Descripción</th>
-                                                <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Monto</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="detailPaymentsBody" class="divide-y divide-mediumGray dark:divide-gray-700">
-                                            <!-- Payments will be loaded dynamically -->
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="font-bold">
-                                                <td class="py-2 px-4" colspan="3">Saldo pendiente</td>
-                                                <td class="py-2 px-4" id="detailSalePending"></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            <!-- Observaciones -->
-                            <div id="detailObservacionesContainer">
-                                <h4 class="text-lg font-semibold mb-2">Observaciones</h4>
-                                <div class="bg-lightGray dark:bg-gray-700 p-3 rounded-lg">
-                                    <p id="detailSaleObservaciones"></p>
-                                </div>
-                            </div>
-                            
-                            <!-- Actions Section -->
-                            <div class="flex justify-end space-x-4 pt-4 border-t border-mediumGray dark:border-gray-700">
-                                <button id="detailAddPaymentBtn" class="btn-action bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded transition-colors flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Agregar pago
-                                </button>
-                                <button id="detailPrintBtn" class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Imprimir
-                                </button>
-                                <button id="detailCloseBtn" class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                    Cerrar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                document.body.appendChild(saleDetailModal);
-                
-                // Configurar eventos para el modal
-                const closeBtn = saleDetailModal.querySelector('.close');
-                const detailCloseBtn = document.getElementById('detailCloseBtn');
-                const detailPrintBtn = document.getElementById('detailPrintBtn');
-                const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
-                
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', () => {
-                        saleDetailModal.style.display = 'none';
-                    });
-                }
-                
-                if (detailCloseBtn) {
-                    detailCloseBtn.addEventListener('click', () => {
-                        saleDetailModal.style.display = 'none';
-                    });
-                }
-                
-                if (detailPrintBtn) {
-                    detailPrintBtn.addEventListener('click', () => {
-                        window.print();
-                    });
-                }
-                
-                if (detailAddPaymentBtn) {
-                    detailAddPaymentBtn.addEventListener('click', () => {
-                        saleDetailModal.style.display = 'none';
-                        addPayment(currentSale.id, currentSale.clienteId);
-                    });
-                }
-                
-                // Cerrar modal al hacer clic fuera del contenido
-                saleDetailModal.addEventListener('click', (event) => {
-                    if (event.target === saleDetailModal) {
-                        saleDetailModal.style.display = 'none';
-                    }
-                });
-            }
-            
-            // Mostrar modal
-            saleDetailModal.style.display = 'block';
-            
-            // Llenar información general
-            document.getElementById('detailSaleId').textContent = saleId;
-            
-            // Formatear fecha
-            let fechaText = 'No disponible';
-            if (venta.fecha) {
-                const fecha = venta.fecha instanceof Timestamp 
-                    ? venta.fecha.toDate() 
-                    : new Date(venta.fecha);
-                fechaText = fecha.toLocaleDateString();
-            }
-            document.getElementById('detailSaleDate').textContent = fechaText;
-            
-            // Obtener nombre del cliente
-            let clienteText = 'Venta de mostrador';
-            if (venta.clienteId) {
-                const cliente = clientes.find(c => c.id === venta.clienteId);
-                if (cliente) {
-                    clienteText = cliente.nombre;
-                } else {
-                    clienteText = 'Cliente no encontrado';
-                }
-            }
-            document.getElementById('detailSaleClient').textContent = clienteText;
-            
-            // Estado
-            const estadoText = venta.estado === 'pendiente' ? 'Pendiente' :
-                              venta.estado === 'parcial' ? 'Abonado' :
-                              venta.estado === 'pagada' ? 'Pagado' :
-                              venta.estado === 'cancelada' ? 'Cancelado' : 'Desconocido';
-            
-            const estadoElement = document.getElementById('detailSaleStatus');
-            estadoElement.textContent = estadoText;
-            estadoElement.className = `status-${venta.estado}`;
-            
-            // Convenio
-            const convenioContainer = document.getElementById('detailConvenioContainer');
-            const empresaContainer = document.getElementById('detailEmpresaContainer');
-            
-            if (venta.convenio) {
-                document.getElementById('detailSaleConvenio').textContent = 'Sí';
-                convenioContainer.style.display = 'block';
-                
-                // Empresa
-                if (venta.empresaId) {
-                    const empresa = empresas.find(e => e.id === venta.empresaId);
-                    document.getElementById('detailSaleEmpresa').textContent = empresa ? empresa.nombre : 'Empresa no encontrada';
-                    empresaContainer.style.display = 'block';
-                } else {
-                    empresaContainer.style.display = 'none';
-                }
-            } else {
-                convenioContainer.style.display = 'none';
-                empresaContainer.style.display = 'none';
-            }
-            
-            // Productos
-            const productsBody = document.getElementById('detailProductsBody');
-            productsBody.innerHTML = '';
-            
-            if (venta.productos && venta.productos.length > 0) {
-                venta.productos.forEach(producto => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
-                    
-                    row.innerHTML = `
-                        <td class="py-2 px-4">${producto.nombreProducto}</td>
-                        <td class="py-2 px-4">${producto.cantidad}</td>
-                        <td class="py-2 px-4">$${producto.precio.toFixed(2)}</td>
-                        <td class="py-2 px-4">$${producto.subtotal.toFixed(2)}</td>
-                    `;
-                    
-                    productsBody.appendChild(row);
-                });
-            } else {
-                productsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">No hay productos registrados</td></tr>';
-            }
-            
-            // Total
-            document.getElementById('detailSaleTotal').textContent = `$${venta.total.toFixed(2)}`;
-            
-            // Pagos y abonos
-            const paymentsBody = document.getElementById('detailPaymentsBody');
-            paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">Cargando pagos...</td></tr>';
-            
-            // Obtener abonos
-            const abonosQuery = query(
-                collection(db, 'abonos'),
-                where('ventaId', '==', saleId),
-                orderBy('fecha', 'asc')
-            );
-            
-            const abonosSnapshot = await getDocs(abonosQuery);
-            
-            // Obtener pagos
-            const pagosQuery = query(
-                collection(db, 'pagos'),
-                where('ventaId', '==', saleId),
-                orderBy('fecha', 'asc')
-            );
-            
-            const pagosSnapshot = await getDocs(pagosQuery);
-            
-            // Calcular total abonado y pagado
-            let totalAbonado = 0;
-            let totalPagado = 0;
-            
-            const pagos = [];
-            
-            // Agregar abono inicial si existe
-            if (venta.abono > 0) {
-                pagos.push({
-                    tipo: 'abono',
-                    fecha: venta.fecha,
-                    descripcion: 'Abono inicial',
-                    monto: venta.abono
-                });
-                
-                totalAbonado += venta.abono;
-            }
-            
-            // Agregar abonos adicionales
-            abonosSnapshot.forEach(doc => {
-                const abono = doc.data();
-                
-                // Evitar duplicar el abono inicial
-                if (abono.descripcion !== 'Abono inicial') {
-                    pagos.push({
-                        tipo: 'abono',
-                        fecha: abono.fecha,
-                        descripcion: abono.descripcion || 'Abono',
-                        monto: abono.monto
-                    });
-                    
-                    totalAbonado += abono.monto;
-                }
-            });
-            
-            // Agregar pagos
-            pagosSnapshot.forEach(doc => {
-                const pago = doc.data();
-                
-                pagos.push({
-                    tipo: 'pago',
-                    fecha: pago.fecha,
-                    descripcion: pago.descripcion || 'Pago',
-                    monto: pago.monto
-                });
-                
-                totalPagado += pago.monto;
-            });
-            
-            // Ordenar pagos por fecha
-            pagos.sort((a, b) => {
-                const fechaA = a.fecha instanceof Timestamp ? a.fecha.toDate() : new Date(a.fecha);
-                const fechaB = b.fecha instanceof Timestamp ? b.fecha.toDate() : new Date(b.fecha);
-                return fechaA - fechaB;
-            });
-            
-            // Limpiar tabla
-            paymentsBody.innerHTML = '';
-            
-            if (pagos.length > 0) {
-                pagos.forEach(pago => {
-                    // Formatear fecha
-                    let fechaText = 'No disponible';
-                    if (pago.fecha) {
-                        const fecha = pago.fecha instanceof Timestamp 
-                            ? pago.fecha.toDate() 
-                            : new Date(pago.fecha);
-                        fechaText = fecha.toLocaleDateString();
-                    }
-                    
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
-                    
-                    row.innerHTML = `
-                        <td class="py-2 px-4">${fechaText}</td>
-                        <td class="py-2 px-4">${pago.tipo === 'abono' ? 'Abono' : 'Pago'}</td>
-                        <td class="py-2 px-4">${pago.descripcion}</td>
-                        <td class="py-2 px-4 ${pago.tipo === 'abono' ? 'text-green-500' : 'text-blue-500'}">$${pago.monto.toFixed(2)}</td>
-                    `;
-                    
-                    paymentsBody.appendChild(row);
-                });
-            } else {
-                paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">No hay pagos registrados</td></tr>';
-            }
-            
-            // Saldo pendiente
-            const saldoPendiente = venta.total - totalAbonado - totalPagado;
-            const saldoElement = document.getElementById('detailSalePending');
-            saldoElement.textContent = `$${saldoPendiente.toFixed(2)}`;
-            saldoElement.className = saldoPendiente > 0 ? 'text-red-500' : 'text-green-500';
-            
-            // Observaciones
-            const observacionesContainer = document.getElementById('detailObservacionesContainer');
-            const observacionesElement = document.getElementById('detailSaleObservaciones');
-            
-            if (venta.observaciones) {
-                observacionesElement.textContent = venta.observaciones;
-                observacionesContainer.style.display = 'block';
-            } else {
-                observacionesContainer.style.display = 'none';
-            }
-            
-            // Mostrar/ocultar botón de agregar pago
-            const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
-            if (detailAddPaymentBtn) {
-                if (saldoPendiente > 0 && venta.estado !== 'cancelada') {
-                    detailAddPaymentBtn.style.display = 'flex';
-                } else {
-                    detailAddPaymentBtn.style.display = 'none';
-                }
-            }
+
+            // Crear y mostrar modal de detalle
+            await showSaleDetailModal(currentSale);
         } else {
-            console.error("No se encontró la venta");
             showToast('No se encontró la venta', 'danger');
         }
     } catch (error) {
@@ -1534,286 +1618,665 @@ async function viewSale(saleId) {
     }
 }
 
+// Mostrar modal de detalle de venta
+async function showSaleDetailModal(venta) {
+    // Crear modal si no existe
+    let saleDetailModal = document.getElementById('saleDetailModal');
+    if (!saleDetailModal) {
+        saleDetailModal = document.createElement('div');
+        saleDetailModal.id = 'saleDetailModal';
+        saleDetailModal.className = 'modal';
+
+        saleDetailModal.innerHTML = `
+            <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
+                <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                    <h3 class="text-xl font-semibold">Detalle de Venta</h3>
+                    <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+                </div>
+                
+                <div class="sale-details space-y-6">
+                    <!-- Información general -->
+                    <div class="general-info bg-lightGray dark:bg-gray-700 p-5 rounded-lg">
+                        <div class="grid md:grid-cols-2 gap-x-4 gap-y-2">
+                            <div class="mb-2">
+                                <p><span class="font-semibold">ID Venta:</span> <span id="detailSaleId"></span></p>
+                            </div>
+                            <div class="mb-2">
+                                <p><span class="font-semibold">Fecha:</span> <span id="detailSaleDate"></span></p>
+                            </div>
+                            <div class="mb-2">
+                                <p><span class="font-semibold">Cliente:</span> <span id="detailSaleClient"></span></p>
+                            </div>
+                            <div class="mb-2">
+                                <p><span class="font-semibold">Estado:</span> <span id="detailSaleStatus"></span></p>
+                            </div>
+                            <div class="mb-2" id="detailConvenioContainer">
+                                <p><span class="font-semibold">Convenio:</span> <span id="detailSaleConvenio"></span></p>
+                            </div>
+                            <div class="mb-2" id="detailEmpresaContainer">
+                                <p><span class="font-semibold">Empresa:</span> <span id="detailSaleEmpresa"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Productos -->
+                    <div>
+                        <h4 class="text-lg font-semibold mb-3">Productos</h4>
+                        <div class="overflow-x-auto">
+                            <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                                <thead>
+                                    <tr>
+                                        <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Producto</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white">Cantidad</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white">Precio</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white">Descuento</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailProductsBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                                    <!-- Products will be loaded dynamically -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="font-bold">
+                                        <td class="py-2 px-4" colspan="4">Total</td>
+                                    
+</cut_off_point>
+                                        <td class="py-2 px-4" id="detailSaleTotal"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagos -->
+                    <div>
+                        <h4 class="text-lg font-semibold mb-3">Pagos y Abonos</h4>
+                        <div class="overflow-x-auto">
+                            <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                                <thead>
+                                    <tr>
+                                        <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Fecha</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white">Tipo</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white">Descripción</th>
+                                        <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailPaymentsBody" class="divide-y divide-mediumGray dark:divide-gray-700">
+                                    <!-- Payments will be loaded dynamically -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="font-bold">
+                                        <td class="py-2 px-4" colspan="3">Saldo pendiente</td>
+                                        <td class="py-2 px-4" id="detailSalePending"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones -->
+                    <div id="detailObservacionesContainer">
+                        <h4 class="text-lg font-semibold mb-2">Observaciones</h4>
+                        <div class="bg-lightGray dark:bg-gray-700 p-3 rounded-lg">
+                            <p id="detailSaleObservaciones"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions Section -->
+                    <div class="flex justify-end space-x-4 pt-4 border-t border-mediumGray dark:border-gray-700 no-print">
+                        <button id="detailAddPaymentBtn" class="btn-action bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded transition-colors flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Agregar pago
+                        </button>
+                        <button id="detailPrintBtn" class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Imprimir
+                        </button>
+                        <button id="detailCloseBtn" class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(saleDetailModal);
+
+        // Configurar eventos para el modal
+        setupSaleDetailModalEvents(saleDetailModal);
+    }
+
+    // Mostrar modal
+    saleDetailModal.style.display = 'block';
+
+    // Llenar información
+    await populateSaleDetailModal(venta);
+}
+
+// Configurar eventos del modal de detalle
+function setupSaleDetailModalEvents(modal) {
+    const closeBtn = modal.querySelector('.close');
+    const detailCloseBtn = document.getElementById('detailCloseBtn');
+    const detailPrintBtn = document.getElementById('detailPrintBtn');
+    const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    if (detailCloseBtn) {
+        detailCloseBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    if (detailPrintBtn) {
+        detailPrintBtn.addEventListener('click', () => {
+            window.print();
+        });
+    }
+
+    if (detailAddPaymentBtn) {
+        detailAddPaymentBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            addPayment(currentSale.id, currentSale.clienteId);
+        });
+    }
+
+    // Cerrar modal al hacer clic fuera del contenido
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+// Llenar información del modal de detalle
+async function populateSaleDetailModal(venta) {
+    // Información general
+    document.getElementById('detailSaleId').textContent = venta.id;
+
+    // Formatear fecha
+    let fechaText = 'No disponible';
+    if (venta.fecha) {
+        const fecha = venta.fecha instanceof Timestamp
+            ? venta.fecha.toDate()
+            : new Date(venta.fecha);
+        fechaText = fecha.toLocaleDateString();
+    }
+    document.getElementById('detailSaleDate').textContent = fechaText;
+
+    // Cliente
+    let clienteText = 'Venta de mostrador';
+    if (venta.clienteId) {
+        const cliente = clientes.find(c => c.id === venta.clienteId);
+        clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
+    }
+    document.getElementById('detailSaleClient').textContent = clienteText;
+
+    // Estado
+    const estadoElement = document.getElementById('detailSaleStatus');
+    estadoElement.textContent = getEstadoText(venta.estado);
+    estadoElement.className = `status-${venta.estado}`;
+
+    // Convenio
+    const convenioContainer = document.getElementById('detailConvenioContainer');
+    const empresaContainer = document.getElementById('detailEmpresaContainer');
+
+    if (venta.convenio) {
+        document.getElementById('detailSaleConvenio').textContent = 'Sí';
+        convenioContainer.style.display = 'block';
+
+        if (venta.empresaId) {
+            const empresa = empresas.find(e => e.id === venta.empresaId);
+            document.getElementById('detailSaleEmpresa').textContent = empresa ? empresa.nombre : 'Empresa no encontrada';
+            empresaContainer.style.display = 'block';
+        } else {
+            empresaContainer.style.display = 'none';
+        }
+    } else {
+        convenioContainer.style.display = 'none';
+        empresaContainer.style.display = 'none';
+    }
+
+    // Productos
+    const productsBody = document.getElementById('detailProductsBody');
+    productsBody.innerHTML = '';
+
+    if (venta.productos && venta.productos.length > 0) {
+        venta.productos.forEach(producto => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+
+            row.innerHTML = `
+                <td class="py-2 px-4">${producto.nombreProducto}</td>
+                <td class="py-2 px-4">${producto.cantidad}</td>
+                <td class="py-2 px-4">$${producto.precio.toFixed(2)}</td>
+                <td class="py-2 px-4">${producto.descuento || 0}%</td>
+                <td class="py-2 px-4">$${producto.subtotal.toFixed(2)}</td>
+            `;
+
+            productsBody.appendChild(row);
+        });
+    } else {
+        productsBody.innerHTML = '<tr><td colspan="5" class="py-2 px-4 text-center">No hay productos registrados</td></tr>';
+    }
+
+    // Total
+    document.getElementById('detailSaleTotal').textContent = `$${venta.total.toFixed(2)}`;
+
+    // Cargar pagos y abonos
+    await loadSalePayments(venta.id);
+
+    // Observaciones
+    const observacionesContainer = document.getElementById('detailObservacionesContainer');
+    const observacionesElement = document.getElementById('detailSaleObservaciones');
+
+    if (venta.observaciones) {
+        observacionesElement.textContent = venta.observaciones;
+        observacionesContainer.style.display = 'block';
+    } else {
+        observacionesContainer.style.display = 'none';
+    }
+}
+
+// Cargar pagos de una venta
+async function loadSalePayments(ventaId) {
+    const paymentsBody = document.getElementById('detailPaymentsBody');
+    paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center"><div class="spinner mr-2"></div>Cargando pagos...</td></tr>';
+
+    try {
+        // Obtener venta para abono inicial
+        const ventaDoc = await getDoc(doc(db, 'ventas', ventaId));
+        const venta = ventaDoc.data();
+
+        // Obtener abonos
+        const abonosQuery = query(
+            collection(db, 'abonos'),
+            where('ventaId', '==', ventaId),
+            orderBy('fecha', 'asc')
+        );
+        const abonosSnapshot = await getDocs(abonosQuery);
+
+        // Obtener pagos
+        const pagosQuery = query(
+            collection(db, 'pagos'),
+            where('ventaId', '==', ventaId),
+            orderBy('fecha', 'asc')
+        );
+        const pagosSnapshot = await getDocs(pagosQuery);
+
+        // Compilar todos los pagos
+        const pagos = [];
+        let totalAbonado = 0;
+        let totalPagado = 0;
+
+        // Agregar abono inicial si existe
+        if (venta.abono > 0) {
+            pagos.push({
+                tipo: 'abono',
+                fecha: venta.fecha,
+                descripcion: 'Abono inicial',
+                monto: venta.abono
+            });
+            totalAbonado += venta.abono;
+        }
+
+        // Agregar abonos adicionales
+        abonosSnapshot.forEach(doc => {
+            const abono = doc.data();
+            if (abono.descripcion !== 'Abono inicial') {
+                pagos.push({
+                    tipo: 'abono',
+                    fecha: abono.fecha,
+                    descripcion: abono.descripcion || 'Abono',
+                    monto: abono.monto
+                });
+                totalAbonado += abono.monto;
+            }
+        });
+
+        // Agregar pagos
+        pagosSnapshot.forEach(doc => {
+            const pago = doc.data();
+            pagos.push({
+                tipo: 'pago',
+                fecha: pago.fecha,
+                descripcion: pago.descripcion || 'Pago',
+                monto: pago.monto
+            });
+            totalPagado += pago.monto;
+        });
+
+        // Ordenar por fecha
+        pagos.sort((a, b) => {
+            const fechaA = a.fecha instanceof Timestamp ? a.fecha.toDate() : new Date(a.fecha);
+            const fechaB = b.fecha instanceof Timestamp ? b.fecha.toDate() : new Date(b.fecha);
+            return fechaA - fechaB;
+        });
+
+        // Mostrar pagos
+        paymentsBody.innerHTML = '';
+
+        if (pagos.length > 0) {
+            pagos.forEach(pago => {
+                const fechaText = pago.fecha instanceof Timestamp
+                    ? pago.fecha.toDate().toLocaleDateString()
+                    : new Date(pago.fecha).toLocaleDateString();
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+
+                row.innerHTML = `
+                    <td class="py-2 px-4">${fechaText}</td>
+                    <td class="py-2 px-4">${pago.tipo === 'abono' ? 'Abono' : 'Pago'}</td>
+                    <td class="py-2 px-4">${pago.descripcion}</td>
+                    <td class="py-2 px-4 ${pago.tipo === 'abono' ? 'text-green-500' : 'text-blue-500'}">$${pago.monto.toFixed(2)}</td>
+                `;
+
+                paymentsBody.appendChild(row);
+            });
+        } else {
+            paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">No hay pagos registrados</td></tr>';
+        }
+
+        // Saldo pendiente
+        const saldoPendiente = venta.total - totalAbonado - totalPagado;
+        const saldoElement = document.getElementById('detailSalePending');
+        saldoElement.textContent = `$${saldoPendiente.toFixed(2)}`;
+        saldoElement.className = saldoPendiente > 0 ? 'text-red-500' : 'text-green-500';
+
+        // Mostrar/ocultar botón de agregar pago
+        const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
+        if (detailAddPaymentBtn) {
+            if (saldoPendiente > 0 && venta.estado !== 'cancelada') {
+                detailAddPaymentBtn.style.display = 'flex';
+            } else {
+                detailAddPaymentBtn.style.display = 'none';
+            }
+        }
+
+    } catch (error) {
+        console.error("Error al cargar pagos:", error);
+        paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center text-red-500">Error al cargar pagos</td></tr>';
+    }
+}
+
 // Función para agregar un pago
 async function addPayment(ventaId, clienteId) {
     try {
-        // Obtener datos de la venta
         const docRef = doc(db, 'ventas', ventaId);
         const docSnap = await getDoc(docRef);
-        
+
         if (!docSnap.exists()) {
             showToast('No se encontró la venta', 'danger');
             return;
         }
-        
+
         const venta = docSnap.data();
 
-        // Verificar si es una venta de mostrador
         if (!venta.clienteId) {
             showToast('No se pueden realizar abonos en ventas de mostrador', 'warning');
             return;
         }
-        
-        // Calcular saldo pendiente
+
         const saldoInfo = await calcularSaldoPendiente(ventaId);
-        
-        // Crear modal de pago si no existe
-        let paymentModal = document.getElementById('paymentModal');
-        if (!paymentModal) {
-            paymentModal = document.createElement('div');
-            paymentModal.id = 'paymentModal';
-            paymentModal.className = 'modal';
-            
-            paymentModal.innerHTML = `
-                <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
-                    <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
-                        <h3 class="text-xl font-semibold">Registrar Pago</h3>
-                        <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
-                    </div>
-                    <form id="paymentForm" class="space-y-4">
-                        <input type="hidden" id="paymentVentaId">
-                        <input type="hidden" id="paymentClienteId">
-                        
-                        <div class="form-group">
-                            <label for="paymentTipo" class="block mb-1 font-medium">Tipo de pago</label>
-                            <select id="paymentTipo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
-                                <option value="abono">Abono</option>
-                                <option value="pago">Pago completo</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentMonto" class="block mb-1 font-medium">Monto</label>
-                            <input type="number" step="0.01" id="paymentMonto" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
-                            <p class="text-sm text-gray-500 mt-1">Saldo pendiente: <span id="paymentSaldoPendiente"></span></p>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentMetodo" class="block mb-1 font-medium">Método de pago</label>
-                            <select id="paymentMetodo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
-                                <option value="efectivo">Efectivo</option>
-                                <option value="tarjeta_credito">Tarjeta de crédito</option>
-                                <option value="tarjeta_debito">Tarjeta de débito</option>
-                                <option value="transferencia">Transferencia</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentFecha" class="block mb-1 font-medium">Fecha</label>
-                            <input type="date" id="paymentFecha" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentDescripcion" class="block mb-1 font-medium">Descripción</label>
-                            <textarea id="paymentDescripcion" rows="2" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
-                        </div>
-                        
-                        <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
-                            <button type="button" class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
-                            <button type="submit" class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Registrar pago</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-            
-            document.body.appendChild(paymentModal);
-            
-            // Configurar eventos para el modal
-            const closeBtn = paymentModal.querySelector('.close');
-            const closeModalBtn = paymentModal.querySelector('.close-modal');
-            
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    paymentModal.style.display = 'none';
-                });
-            }
-            
-            if (closeModalBtn) {
-                closeModalBtn.addEventListener('click', () => {
-                    paymentModal.style.display = 'none';
-                });
-            }
-            
-            // Cerrar modal al hacer clic fuera del contenido
-            paymentModal.addEventListener('click', (event) => {
-                if (event.target === paymentModal) {
-                    paymentModal.style.display = 'none';
-                }
-            });
-            
-            // Configurar formulario de pago
-            const paymentForm = document.getElementById('paymentForm');
-            if (paymentForm) {
-                paymentForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    try {
-                        const ventaId = document.getElementById('paymentVentaId').value;
-                        const clienteId = document.getElementById('paymentClienteId').value;
-                        const tipo = document.getElementById('paymentTipo').value;
-                        const monto = parseFloat(document.getElementById('paymentMonto').value) || 0;
-                        const metodo = document.getElementById('paymentMetodo').value;
-                        const fecha = document.getElementById('paymentFecha').value;
-                        const descripcion = document.getElementById('paymentDescripcion').value;
-                        
-                        // Validar monto
-                        if (monto <= 0) {
-                            showToast('El monto debe ser mayor a cero', 'warning');
-                            return;
-                        }
-                        
-                        // Validar que el monto no sea mayor al saldo pendiente
-                        const saldoInfo = await calcularSaldoPendiente(ventaId);
-                        if (monto > saldoInfo.saldoPendiente) {
-                            showToast('El monto no puede ser mayor al saldo pendiente', 'warning');
-                            return;
-                        }
-                        
-                        // Registrar pago o abono
-                        if (tipo === 'abono') {
-                            await registrarAbono(ventaId, clienteId, monto, descripcion || 'Abono', metodo, fecha ? new Date(fecha) : new Date());
-                        } else {
-                            await registrarPago(ventaId, clienteId, monto, descripcion || 'Pago', metodo, fecha ? new Date(fecha) : new Date());
-                        }
-                        
-                        // Actualizar estado de la venta
-                        const nuevoSaldoInfo = await calcularSaldoPendiente(ventaId);
-                        let nuevoEstado = 'pendiente';
-                        
-                        if (nuevoSaldoInfo.saldoPendiente <= 0) {
-                            nuevoEstado = 'pagada';
-                        } else if (nuevoSaldoInfo.totalAbonado > 0) {
-                            nuevoEstado = 'parcial';
-                        }
-                        
-                        await updateDoc(doc(db, 'ventas', ventaId), {
-                            estado: nuevoEstado,
-                            updatedAt: serverTimestamp()
-                        });
-                        
-                        showToast(`${tipo === 'abono' ? 'Abono' : 'Pago'} registrado correctamente`, 'success');
-                        
-                        // Cerrar modal
-                        paymentModal.style.display = 'none';
-                        
-                        // Recargar ventas
-                        await loadVentas();
-                        
-                    } catch (error) {
-                        console.error(`Error al registrar ${tipo === 'abono' ? 'abono' : 'pago'}:`, error);
-                        showToast(`Error al registrar ${tipo === 'abono' ? 'abono' : 'pago'}`, 'danger');
-                    }
-                });
-            }
-            
-            // Configurar evento para cambiar tipo de pago
-            const paymentTipo = document.getElementById('paymentTipo');
-            const paymentMonto = document.getElementById('paymentMonto');
-            
-            if (paymentTipo && paymentMonto) {
-                paymentTipo.addEventListener('change', async () => {
-                    const tipo = paymentTipo.value;
-                    const ventaId = document.getElementById('paymentVentaId').value;
-                    
-                    if (tipo === 'pago') {
-                        // Establecer monto igual al saldo pendiente
-                        const saldoInfo = await calcularSaldoPendiente(ventaId);
-                        paymentMonto.value = saldoInfo.saldoPendiente.toFixed(2);
-                    } else {
-                        // Limpiar monto
-                        paymentMonto.value = '';
-                    }
-                });
-            }
+
+        if (saldoInfo.saldoPendiente <= 0) {
+            showToast('Esta venta ya está completamente pagada', 'info');
+            return;
         }
-        
-        // Mostrar modal
-        paymentModal.style.display = 'block';
-        
-        // Llenar datos
-        document.getElementById('paymentVentaId').value = ventaId;
-        document.getElementById('paymentClienteId').value = clienteId || '';
-        document.getElementById('paymentSaldoPendiente').textContent = `$${saldoInfo.saldoPendiente.toFixed(2)}`;
-        
-        // Establecer fecha actual
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        document.getElementById('paymentFecha').value = `${year}-${month}-${day}`;
-        
-        // Limpiar otros campos
-        document.getElementById('paymentTipo').value = 'abono';
-        document.getElementById('paymentMonto').value = '';
-        document.getElementById('paymentMetodo').value = 'efectivo';
-        document.getElementById('paymentDescripcion').value = '';
-        
+
+        // Mostrar modal de pago
+        await showPaymentModal(ventaId, clienteId, saldoInfo);
+
     } catch (error) {
         console.error("Error al preparar formulario de pago:", error);
         showToast('Error al preparar formulario de pago', 'danger');
     }
 }
 
-// Función para confirmar cancelación de venta
-function confirmCancelSale(saleId) {
-    if (confirm('¿Estás seguro de que deseas cancelar esta venta? Esta acción no se puede deshacer.')) {
-        cancelSale(saleId);
+// Mostrar modal de pago
+async function showPaymentModal(ventaId, clienteId, saldoInfo) {
+    // Crear modal si no existe
+    let paymentModal = document.getElementById('paymentModal');
+    if (!paymentModal) {
+        paymentModal = document.createElement('div');
+        paymentModal.id = 'paymentModal';
+        paymentModal.className = 'modal';
+
+        paymentModal.innerHTML = `
+            <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+                <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                    <h3 class="text-xl font-semibold">Registrar Pago</h3>
+                    <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+                </div>
+                <form id="paymentForm" class="space-y-4">
+                    <input type="hidden" id="paymentVentaId">
+                    <input type="hidden" id="paymentClienteId">
+                    
+                    <div class="form-group">
+                        <label for="paymentTipo" class="block mb-1 font-medium">Tipo de pago</label>
+                        <select id="paymentTipo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                            <option value="abono">Abono</option>
+                            <option value="pago">Pago completo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="paymentMonto" class="block mb-1 font-medium">Monto</label>
+                        <input type="number" step="0.01" id="paymentMonto" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                        <p class="text-sm text-gray-500 mt-1">Saldo pendiente: <span id="paymentSaldoPendiente" class="font-semibold"></span></p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="paymentMetodo" class="block mb-1 font-medium">Método de pago</label>
+                        <select id="paymentMetodo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta_credito">Tarjeta de crédito</option>
+                            <option value="tarjeta_debito">Tarjeta de débito</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="paymentFecha" class="block mb-1 font-medium">Fecha</label>
+                        <input type="date" id="paymentFecha" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="paymentDescripcion" class="block mb-1 font-medium">Descripción</label>
+                        <textarea id="paymentDescripcion" rows="2" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                        <button type="button" class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                        <button type="submit" class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Registrar pago</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(paymentModal);
+
+        // Configurar eventos
+        setupPaymentModalEvents(paymentModal);
+    }
+
+    // Mostrar modal y llenar datos
+    paymentModal.style.display = 'block';
+
+    document.getElementById('paymentVentaId').value = ventaId;
+    document.getElementById('paymentClienteId').value = clienteId || '';
+    document.getElementById('paymentSaldoPendiente').textContent = `$${saldoInfo.saldoPendiente.toFixed(2)}`;
+
+    // Establecer fecha actual
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    document.getElementById('paymentFecha').value = `${year}-${month}-${day}`;
+
+    // Limpiar otros campos
+    document.getElementById('paymentTipo').value = 'abono';
+    document.getElementById('paymentMonto').value = '';
+    document.getElementById('paymentMetodo').value = 'efectivo';
+    document.getElementById('paymentDescripcion').value = '';
+}
+
+// Configurar eventos del modal de pago
+function setupPaymentModalEvents(modal) {
+    const closeBtn = modal.querySelector('.close');
+    const closeModalBtn = modal.querySelector('.close-modal');
+    const paymentForm = document.getElementById('paymentForm');
+    const paymentTipo = document.getElementById('paymentTipo');
+    const paymentMonto = document.getElementById('paymentMonto');
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    // Cerrar modal al hacer clic fuera
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Configurar cambio de tipo de pago
+    if (paymentTipo && paymentMonto) {
+        paymentTipo.addEventListener('change', async () => {
+            const tipo = paymentTipo.value;
+            const ventaId = document.getElementById('paymentVentaId').value;
+
+            if (tipo === 'pago') {
+                const saldoInfo = await calcularSaldoPendiente(ventaId);
+                paymentMonto.value = saldoInfo.saldoPendiente.toFixed(2);
+            } else {
+                paymentMonto.value = '';
+            }
+        });
+    }
+
+    // Configurar formulario
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await handlePaymentSubmit(modal);
+        });
     }
 }
 
-// Función para cancelar una venta
-async function cancelSale(saleId) {
+// Manejar envío del formulario de pago
+async function handlePaymentSubmit(modal) {
     try {
-        await updateDoc(doc(db, 'ventas', saleId), {
-            estado: 'cancelada',
+        const ventaId = document.getElementById('paymentVentaId').value;
+        const clienteId = document.getElementById('paymentClienteId').value;
+        const tipo = document.getElementById('paymentTipo').value;
+        const monto = parseFloat(document.getElementById('paymentMonto').value) || 0;
+        const metodo = document.getElementById('paymentMetodo').value;
+        const fecha = document.getElementById('paymentFecha').value;
+        const descripcion = document.getElementById('paymentDescripcion').value;
+
+        // Validar monto
+        if (monto <= 0) {
+            showToast('El monto debe ser mayor a cero', 'warning');
+            return;
+        }
+
+        // Validar que el monto no sea mayor al saldo pendiente
+        const saldoInfo = await calcularSaldoPendiente(ventaId);
+        if (monto > saldoInfo.saldoPendiente) {
+            showToast('El monto no puede ser mayor al saldo pendiente', 'warning');
+            return;
+        }
+
+        // Confirmar pago
+        const confirmMessage = `¿Confirmar ${tipo} de $${monto.toFixed(2)}?`;
+
+        showCustomAlert(
+            'Confirmar Pago',
+            confirmMessage,
+            'info',
+            async () => {
+                await processPayment({
+                    ventaId,
+                    clienteId,
+                    tipo,
+                    monto,
+                    metodo,
+                    fecha: fecha ? new Date(fecha) : new Date(),
+                    descripcion: descripcion || (tipo === 'abono' ? 'Abono' : 'Pago'),
+                    modal
+                });
+            }
+        );
+
+    } catch (error) {
+        console.error('Error al procesar pago:', error);
+        showToast('Error al procesar el pago', 'danger');
+    }
+}
+
+// Procesar pago
+async function processPayment(paymentData) {
+    try {
+        const { ventaId, clienteId, tipo, monto, metodo, fecha, descripcion, modal } = paymentData;
+
+        // Registrar pago o abono
+        if (tipo === 'abono') {
+            await registrarAbono(ventaId, clienteId, monto, descripcion, metodo, fecha);
+        } else {
+            await registrarPago(ventaId, clienteId, monto, descripcion, metodo, fecha);
+        }
+
+        // Actualizar estado de la venta
+        const nuevoSaldoInfo = await calcularSaldoPendiente(ventaId);
+        let nuevoEstado = 'pendiente';
+
+        if (nuevoSaldoInfo.saldoPendiente <= 0) {
+            nuevoEstado = 'pagada';
+        } else if (nuevoSaldoInfo.totalAbonado > 0) {
+            nuevoEstado = 'parcial';
+        }
+
+        await updateDoc(doc(db, 'ventas', ventaId), {
+            estado: nuevoEstado,
             updatedAt: serverTimestamp()
         });
-        
-        showToast('Venta cancelada correctamente', 'success');
-        
-        // Recargar ventas
-        await loadVentas();
-    } catch (error) {
-        console.error("Error al cancelar venta:", error);
-        showToast('Error al cancelar la venta', 'danger');
-    }
-}
 
-// Función para registrar un abono
-async function registrarAbono(ventaId, clienteId, monto, descripcion = 'Abono', metodoPago = 'efectivo', fecha = new Date()) {
-    try {
-        // Crear objeto de abono
-        const abonoData = {
-            ventaId,
-            clienteId: clienteId || null,
-            monto,
-            descripcion,
-            metodoPago,
-            fecha: fecha,
-            createdAt: serverTimestamp()
-        };
-        
-        // Agregar abono
-        const abonoRef = await addDoc(collection(db, 'abonos'), abonoData);
-        
-        // Si hay cliente, actualizar última visita
-        if (clienteId) {
-            await updateDoc(doc(db, 'clientes', clienteId), {
-                ultimaVisita: serverTimestamp()
-            });
-        }
-        
-        return abonoRef.id;
+        showToast(`${tipo === 'abono' ? 'Abono' : 'Pago'} registrado correctamente`, 'success');
+
+        // Cerrar modal y recargar datos
+        modal.style.display = 'none';
+        await loadVentas();
+
     } catch (error) {
-        console.error("Error al registrar abono:", error);
-        throw error;
+        console.error(`Error al registrar ${tipo}:`, error);
+        showToast(`Error al registrar ${tipo}`, 'danger');
     }
 }
 
 // Función para registrar un pago
 async function registrarPago(ventaId, clienteId, monto, descripcion = 'Pago', metodoPago = 'efectivo', fecha = new Date()) {
     try {
-        // Crear objeto de pago
         const pagoData = {
             ventaId,
             clienteId: clienteId || null,
@@ -1823,17 +2286,15 @@ async function registrarPago(ventaId, clienteId, monto, descripcion = 'Pago', me
             fecha: fecha,
             createdAt: serverTimestamp()
         };
-        
-        // Agregar pago
+
         const pagoRef = await addDoc(collection(db, 'pagos'), pagoData);
-        
-        // Si hay cliente, actualizar última visita
+
         if (clienteId) {
             await updateDoc(doc(db, 'clientes', clienteId), {
                 ultimaVisita: serverTimestamp()
             });
         }
-        
+
         return pagoRef.id;
     } catch (error) {
         console.error("Error al registrar pago:", error);
@@ -1841,55 +2302,79 @@ async function registrarPago(ventaId, clienteId, monto, descripcion = 'Pago', me
     }
 }
 
+// Función para confirmar cancelación de venta
+function confirmCancelSale(saleId) {
+    showCustomAlert(
+        'Cancelar Venta',
+        '¿Estás seguro de que deseas cancelar esta venta? Esta acción no se puede deshacer.',
+        'danger',
+        () => {
+            cancelSale(saleId);
+        }
+    );
+}
+
+// Función para cancelar una venta
+async function cancelSale(saleId) {
+    try {
+        await updateDoc(doc(db, 'ventas', saleId), {
+            estado: 'cancelada',
+            updatedAt: serverTimestamp()
+        });
+
+        showToast('Venta cancelada correctamente', 'success');
+        await loadVentas();
+    } catch (error) {
+        console.error("Error al cancelar venta:", error);
+        showToast('Error al cancelar la venta', 'danger');
+    }
+}
+
 // Función para calcular saldo pendiente de una venta
 async function calcularSaldoPendiente(ventaId) {
     try {
-        // Obtener venta
         const ventaDoc = await getDoc(doc(db, 'ventas', ventaId));
         if (!ventaDoc.exists()) {
             throw new Error('La venta no existe');
         }
-        
+
         const venta = ventaDoc.data();
         const total = venta.total;
-        
+
         // Obtener abonos
         const abonosQuery = query(
             collection(db, 'abonos'),
             where('ventaId', '==', ventaId)
         );
-        
         const abonosSnapshot = await getDocs(abonosQuery);
-        
-        // Calcular total abonado
-        let totalAbonado = venta.abono || 0; // Incluir abono inicial
-        
+
+        // Calcular total abonado (incluir abono inicial)
+        let totalAbonado = venta.abono || 0;
+
         abonosSnapshot.forEach(doc => {
             const abono = doc.data();
-            // Evitar contar el abono inicial dos veces
             if (abono.descripcion !== 'Abono inicial') {
                 totalAbonado += abono.monto;
             }
         });
-        
+
         // Obtener pagos
         const pagosQuery = query(
             collection(db, 'pagos'),
             where('ventaId', '==', ventaId)
         );
-        
         const pagosSnapshot = await getDocs(pagosQuery);
-        
+
         // Calcular total pagado
         let totalPagado = 0;
         pagosSnapshot.forEach(doc => {
             const pago = doc.data();
             totalPagado += pago.monto;
         });
-        
+
         // Calcular saldo pendiente
-        const saldoPendiente = total - totalAbonado - totalPagado;
-        
+        const saldoPendiente = Math.max(0, total - totalAbonado - totalPagado);
+
         return {
             total,
             totalAbonado,
@@ -1898,6 +2383,17 @@ async function calcularSaldoPendiente(ventaId) {
         };
     } catch (error) {
         console.error("Error al calcular saldo pendiente:", error);
-        throw error;
+        return {
+            total: 0,
+            totalAbonado: 0,
+            totalPagado: 0,
+            saldoPendiente: 0
+        };
     }
 }
+
+// Exportar funciones globales para uso en otros archivos
+window.loadVentas = loadVentas;
+window.calcularSaldoPendiente = calcularSaldoPendiente;
+window.showToast = showToast;
+window.showCustomAlert = showCustomAlert;
