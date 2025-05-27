@@ -57,10 +57,19 @@ const VALID_EMAIL_DOMAINS = [
   "sep.gob.mx",
 ]
 
-// Varibles globales para manejar la paginación
-let currentPage = 1
-let itemsPerPage = 10
-let totalPages = 1
+// CORREGIDO: Estados de paginación separados para cada pestaña
+const paginationState = {
+  productos: {
+    currentPage: 1,
+    totalPages: 1,
+    itemsPerPage: 10
+  },
+  armazones: {
+    currentPage: 1,
+    totalPages: 1,
+    itemsPerPage: 10
+  }
+}
 
 // Variables globales para almacenar datos
 let categorias = []
@@ -147,8 +156,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Configurar eventos para las búsquedas optimizadas
     setupOptimizedSearchEvents()
 
-    // Cargar datos iniciales
+    // Configurar eventos de paginación
+    setupPaginationEvents()
+
+    // Cargar datos iniciales de forma secuencial
+    console.log("Iniciando carga de datos iniciales...")
+    
+    // Cargar productos primero (pestaña activa por defecto)
+    console.log("Cargando productos...")
     await loadProductosOptimized()
+    
+    // Cargar armazones en segundo plano
+    console.log("Cargando armazones...")
     await loadArmazonesOptimized()
 
     // Cargar valores únicos para filtros
@@ -172,43 +191,69 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Crear paneles de filtros
     createProductFilters()
     createFrameFilters()
+
+    console.log("Inicialización completada correctamente")
   } catch (error) {
     console.error("Error al inicializar la página de inventario:", error)
     showToast("Error al cargar la página de inventario", "danger")
   }
 })
 
-// Listener adicional SOLO para los botones de paginación
-document.addEventListener("DOMContentLoaded", () => {
+// ===== CONFIGURACIÓN DE EVENTOS DE PAGINACIÓN CORREGIDA =====
+function setupPaginationEvents() {
   const prevBtn = document.getElementById("prevPageBtn")
   const nextBtn = document.getElementById("nextPageBtn")
 
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
-      if (currentPage > 1) {
-        currentPage--
-        if (document.getElementById("productos-tab")?.style.display !== "none") {
-          displayFilteredProductos()
-        } else {
-          displayFilteredArmazones()
-        }
+      const activeTab = getActiveTab()
+      const state = paginationState[activeTab]
+      
+      if (state.currentPage > 1) {
+        state.currentPage--
+        refreshCurrentTab()
       }
     })
   }
 
   if (nextBtn) {
     nextBtn.addEventListener("click", () => {
-      if (currentPage < totalPages) {
-        currentPage++
-        if (document.getElementById("productos-tab")?.style.display !== "none") {
-          displayFilteredProductos()
-        } else {
-          displayFilteredArmazones()
-        }
+      const activeTab = getActiveTab()
+      const state = paginationState[activeTab]
+      
+      if (state.currentPage < state.totalPages) {
+        state.currentPage++
+        refreshCurrentTab()
       }
     })
   }
-})
+}
+
+// CORREGIDO: Función para obtener la pestaña activa
+function getActiveTab() {
+  const productosTab = document.getElementById("productos-tab")
+  const armazonesTab = document.getElementById("armazones-tab")
+  
+  if (productosTab && productosTab.style.display !== "none") {
+    return "productos"
+  } else if (armazonesTab && armazonesTab.style.display !== "none") {
+    return "armazones"
+  }
+  
+  // Por defecto, productos está activo
+  return "productos"
+}
+
+// Función para refrescar la pestaña actual
+function refreshCurrentTab() {
+  const activeTab = getActiveTab()
+  
+  if (activeTab === "productos") {
+    displayFilteredProductos()
+  } else if (activeTab === "armazones") {
+    displayFilteredArmazones()
+  }
+}
 
 // ===== SISTEMA DE ALERTAS MEJORADO =====
 
@@ -534,7 +579,7 @@ function validateDomain(email) {
 // Función mejorada para generar código de armazón
 async function generarCodigoArmazon() {
   try {
-    console.log("Generando código para armaz��n...")
+    console.log("Generando código para armazón...")
 
     // Buscar todos los códigos existentes de armazones
     const armazonesSnapshot = await getDocs(collection(db, "armazones"))
@@ -723,44 +768,56 @@ function setupCacheRefresh() {
 // Función para refrescar cache de productos
 async function refreshProductsCache() {
   try {
+    console.log("Actualizando cache de productos...")
     const productosSnapshot = await getDocs(collection(db, "productos"))
-    productosCache = []
+    const tempProductos = []
 
     productosSnapshot.forEach((doc) => {
       if (doc.id !== "placeholder" && !doc.data().isPlaceholder) {
-        productosCache.push({
+        tempProductos.push({
           id: doc.id,
           ...doc.data(),
         })
       }
     })
 
+    // CORREGIDO: Actualizar cache de forma síncrona
+    productosCache = tempProductos
     lastProductsUpdate = Date.now()
-    console.log("Cache de productos actualizado:", productosCache.length)
+    
+    console.log("Cache de productos actualizado:", productosCache.length, "productos cargados")
+    return productosCache.length // Retornar el número de productos cargados
   } catch (error) {
     console.error("Error al actualizar cache de productos:", error)
+    throw error
   }
 }
 
 // Función para refrescar cache de armazones
 async function refreshFramesCache() {
   try {
+    console.log("Actualizando cache de armazones...")
     const armazonesSnapshot = await getDocs(collection(db, "armazones"))
-    armazonesCache = []
+    const tempArmazones = []
 
     armazonesSnapshot.forEach((doc) => {
       if (doc.id !== "placeholder" && !doc.data().isPlaceholder) {
-        armazonesCache.push({
+        tempArmazones.push({
           id: doc.id,
           ...doc.data(),
         })
       }
     })
 
+    // CORREGIDO: Actualizar cache de forma síncrona
+    armazonesCache = tempArmazones
     lastFramesUpdate = Date.now()
-    console.log("Cache de armazones actualizado:", armazonesCache.length)
+    
+    console.log("Cache de armazones actualizado:", armazonesCache.length, "armazones cargados")
+    return armazonesCache.length // Retornar el número de armazones cargados
   } catch (error) {
     console.error("Error al actualizar cache de armazones:", error)
+    throw error
   }
 }
 
@@ -825,13 +882,15 @@ function updateProductTypeSelector() {
   }
 }
 
-// Función para configurar las pestañas
+// CORREGIDO: Función para configurar las pestañas con estado de paginación separado
 function setupTabs() {
   const tabButtons = document.querySelectorAll(".tab-btn")
   const tabContents = document.querySelectorAll(".tab-content")
 
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
+      // CORREGIDO: No resetear página al cambiar de pestaña, mantener estado independiente
+      
       tabButtons.forEach((btn) => {
         btn.classList.remove("active")
         btn.querySelector("span").classList.add("opacity-0")
@@ -844,6 +903,9 @@ function setupTabs() {
       tabContents.forEach((content) => {
         content.style.display = content.id === tabId + "-tab" ? "block" : "none"
       })
+
+      // CORREGIDO: Refrescar la pestaña activa con su propio estado de paginación
+      refreshCurrentTab()
     })
   })
 }
@@ -1613,7 +1675,7 @@ function setupOptimizedSearchEvents() {
 
       searchTimeoutProducts = setTimeout(() => {
         filtrosProductos.busqueda = e.target.value.trim().toLowerCase()
-        currentPage = 1 
+        paginationState.productos.currentPage = 1 // CORREGIDO: Usar estado específico
         displayFilteredProductos()
       }, SEARCH_DELAY)
     })
@@ -1623,7 +1685,7 @@ function setupOptimizedSearchEvents() {
       if (e.key === "Enter") {
         clearTimeout(searchTimeoutProducts)
         filtrosProductos.busqueda = e.target.value.trim().toLowerCase()
-        currentPage = 1
+        paginationState.productos.currentPage = 1 // CORREGIDO: Usar estado específico
         displayFilteredProductos()
       }
     })
@@ -1635,7 +1697,7 @@ function setupOptimizedSearchEvents() {
 
       searchTimeoutFrames = setTimeout(() => {
         filtrosArmazones.busqueda = e.target.value.trim().toLowerCase()
-        currentPage = 1
+        paginationState.armazones.currentPage = 1 // CORREGIDO: Usar estado específico
         displayFilteredArmazones()
       }, SEARCH_DELAY)
     })
@@ -1645,7 +1707,7 @@ function setupOptimizedSearchEvents() {
       if (e.key === "Enter") {
         clearTimeout(searchTimeoutFrames)
         filtrosArmazones.busqueda = e.target.value.trim().toLowerCase()
-        currentPage = 1
+        paginationState.armazones.currentPage = 1 // CORREGIDO: Usar estado específico
         displayFilteredArmazones()
       }
     })
@@ -1698,7 +1760,7 @@ function setupOptimizedFilterEvents() {
         } else {
           filtrosProductos[property] = element.value
         }
-        currentPage = 1 // Reiniciar a la primera página al aplicar filtros
+        paginationState.productos.currentPage = 1 // CORREGIDO: Usar estado específico
         displayFilteredProductos()
       })
     }
@@ -1724,7 +1786,7 @@ function setupOptimizedFilterEvents() {
         } else {
           filtrosArmazones[property] = element.value
         }
-        currentPage = 1 // Reiniciar a la primera página al aplicar filtros
+        paginationState.armazones.currentPage = 1 // CORREGIDO: Usar estado específico
         displayFilteredArmazones()
       })
     }
@@ -1820,7 +1882,7 @@ function createFrameFilters() {
   }
 }
 
-// Función para limpiar filtros de productos
+// CORREGIDO: Función para limpiar filtros de productos con estado específico
 function clearProductFilters() {
   // Resetear objeto de filtros
   Object.keys(filtrosProductos).forEach((key) => {
@@ -1857,11 +1919,12 @@ function clearProductFilters() {
     searchInput.value = ""
   }
 
-  // Mostrar todos los productos
+  // CORREGIDO: Resetear página usando estado específico
+  paginationState.productos.currentPage = 1
   displayFilteredProductos()
 }
 
-// Función para limpiar filtros de armazones
+// CORREGIDO: Función para limpiar filtros de armazones con estado específico
 function clearFrameFilters() {
   // Resetear objeto de filtros
   Object.keys(filtrosArmazones).forEach((key) => {
@@ -1898,7 +1961,8 @@ function clearFrameFilters() {
     searchInput.value = ""
   }
 
-  // Mostrar todos los armazones
+  // CORREGIDO: Resetear página usando estado específico
+  paginationState.armazones.currentPage = 1
   displayFilteredArmazones()
 }
 
@@ -1914,15 +1978,48 @@ async function loadProductosOptimized() {
     tableBody.innerHTML =
       '<tr><td colspan="8" class="py-8 text-center"><div class="flex flex-col items-center space-y-3"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div><p class="text-gray-600 dark:text-gray-400">Cargando productos...</p></div></td></tr>'
 
-    // Usar cache si está disponible y es reciente
-    if (productosCache.length > 0 && Date.now() - lastProductsUpdate < CACHE_DURATION) {
-      displayFilteredProductos()
-      return
-    }
+    // Limpiar cache y forzar carga completa
+    productosCache = []
+    lastProductsUpdate = 0
+    
+    console.log("Iniciando carga de productos desde Firestore...")
+    
+    // Cargar directamente desde Firestore sin usar cache
+    const productosSnapshot = await getDocs(collection(db, "productos"))
+    const tempProductos = []
 
-    // Cargar desde Firestore
-    await refreshProductsCache()
-    displayFilteredProductos()
+    productosSnapshot.forEach((doc) => {
+      if (doc.id !== "placeholder" && !doc.data().isPlaceholder) {
+        tempProductos.push({
+          id: doc.id,
+          ...doc.data(),
+        })
+      }
+    })
+
+    // Asegurar que el cache esté completamente poblado antes de continuar
+    productosCache = tempProductos
+    lastProductsUpdate = Date.now()
+    
+    console.log("Productos cargados en cache:", productosCache.length)
+    
+    // Solo mostrar después de que el cache esté 100% listo
+    if (productosCache.length > 0) {
+      // Pequeña pausa para asegurar que todo esté sincronizado
+      await new Promise(resolve => setTimeout(resolve, 50))
+      displayFilteredProductos()
+    } else {
+      // Si no hay productos, mostrar mensaje apropiado
+      tableBody.innerHTML =
+        '<tr><td colspan="8" class="py-8 text-center text-gray-500 dark:text-gray-400">No hay productos registrados</td></tr>'
+      
+      paginationState.productos.totalPages = 1
+      paginationState.productos.currentPage = 1
+      updatePaginationControls()
+      updateResultsCounter("productos", 0, 0)
+    }
+    
+    console.log("Carga de productos completada exitosamente")
   } catch (error) {
     console.error("Error al cargar productos:", error)
     tableBody.innerHTML =
@@ -1941,15 +2038,48 @@ async function loadArmazonesOptimized() {
     tableBody.innerHTML =
       '<tr><td colspan="10" class="py-8 text-center"><div class="flex flex-col items-center space-y-3"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div><p class="text-gray-600 dark:text-gray-400">Cargando armazones...</p></div></td></tr>'
 
-    // Usar cache si está disponible y es reciente
-    if (armazonesCache.length > 0 && Date.now() - lastFramesUpdate < CACHE_DURATION) {
-      displayFilteredArmazones()
-      return
-    }
+    // Limpiar cache y forzar carga completa
+    armazonesCache = []
+    lastFramesUpdate = 0
+    
+    console.log("Iniciando carga de armazones desde Firestore...")
+    
+    // Cargar directamente desde Firestore sin usar cache
+    const armazonesSnapshot = await getDocs(collection(db, "armazones"))
+    const tempArmazones = []
 
-    // Cargar desde Firestore
-    await refreshFramesCache()
-    displayFilteredArmazones()
+    armazonesSnapshot.forEach((doc) => {
+      if (doc.id !== "placeholder" && !doc.data().isPlaceholder) {
+        tempArmazones.push({
+          id: doc.id,
+          ...doc.data(),
+        })
+      }
+    })
+
+    // Asegurar que el cache esté completamente poblado antes de continuar
+    armazonesCache = tempArmazones
+    lastFramesUpdate = Date.now()
+    
+    console.log("Armazones cargados en cache:", armazonesCache.length)
+    
+    // Solo mostrar después de que el cache esté 100% listo
+    if (armazonesCache.length > 0) {
+      // Pequeña pausa para asegurar que todo esté sincronizado
+      await new Promise(resolve => setTimeout(resolve, 50))
+      displayFilteredArmazones()
+    } else {
+      // Si no hay armazones, mostrar mensaje apropiado
+      tableBody.innerHTML =
+        '<tr><td colspan="10" class="py-8 text-center text-gray-500 dark:text-gray-400">No hay armazones registrados</td></tr>'
+      
+      paginationState.armazones.totalPages = 1
+      paginationState.armazones.currentPage = 1
+      updatePaginationControls()
+      updateResultsCounter("armazones", 0, 0)
+    }
+    
+    console.log("Carga de armazones completada exitosamente")
   } catch (error) {
     console.error("Error al cargar armazones:", error)
     tableBody.innerHTML =
@@ -1958,98 +2088,316 @@ async function loadArmazonesOptimized() {
   }
 }
 
-// ===== FUNCIONES DE VISUALIZACIÓN DE DATOS =====
+// ===== FUNCIONES DE VISUALIZACIÓN DE DATOS CON FILTROS CORREGIDOS =====
 
-// Función para mostrar productos filtrados
+// Función para aplicar filtros a productos
+function applyProductFilters(productos) {
+  return productos.filter((producto) => {
+    // Filtro por tipo
+    if (filtrosProductos.tipo && producto.tipo !== filtrosProductos.tipo) {
+      return false
+    }
+
+    // Filtro por categoría
+    if (filtrosProductos.categoria && producto.categoriaId !== filtrosProductos.categoria) {
+      return false
+    }
+
+    // Filtro por proveedor
+    if (filtrosProductos.proveedor && producto.proveedorId !== filtrosProductos.proveedor) {
+      return false
+    }
+
+    // Filtro por precio mínimo
+    if (filtrosProductos.precioMin && producto.precioVenta < parseFloat(filtrosProductos.precioMin)) {
+      return false
+    }
+
+    // Filtro por precio máximo
+    if (filtrosProductos.precioMax && producto.precioVenta > parseFloat(filtrosProductos.precioMax)) {
+      return false
+    }
+
+    // Filtro por búsqueda
+    if (filtrosProductos.busqueda) {
+      const searchTerm = filtrosProductos.busqueda.toLowerCase()
+      const searchableText = [
+        producto.codigo,
+        producto.nombre,
+        producto.descripcion,
+        producto.tipo,
+      ].join(" ").toLowerCase()
+      
+      if (!searchableText.includes(searchTerm)) {
+        return false
+      }
+    }
+
+    // Filtro por stock bajo
+    if (filtrosProductos.stockBajo) {
+      const stockMinimo = producto.stockMinimo || CONFIG.STOCK_MINIMO_PRODUCTO
+      const stockCritico = producto.stockCritico || CONFIG.STOCK_CRITICO_PRODUCTO
+      
+      const filterValue = document.getElementById("filterProductoStockBajo")?.value
+      
+      if (filterValue === "bajo" && producto.stock > stockMinimo) {
+        return false
+      }
+      if (filterValue === "critico" && (producto.stock > stockCritico || producto.stock === 0)) {
+        return false
+      }
+      if (filterValue === "agotado" && producto.stock > 0) {
+        return false
+      }
+      if (filterValue === "normal" && producto.stock <= stockMinimo) {
+        return false
+      }
+    }
+
+    return true
+  })
+}
+
+// Función para aplicar filtros a armazones
+function applyFrameFilters(armazones) {
+  return armazones.filter((armazon) => {
+    // Filtro por marca
+    if (filtrosArmazones.marca && armazon.marca !== filtrosArmazones.marca) {
+      return false
+    }
+
+    // Filtro por material
+    if (filtrosArmazones.material) {
+      if (!armazon.materiales || !armazon.materiales.includes(filtrosArmazones.material)) {
+        return false
+      }
+    }
+
+    // Filtro por proveedor
+    if (filtrosArmazones.proveedor && armazon.proveedorId !== filtrosArmazones.proveedor) {
+      return false
+    }
+
+    // Filtro por precio mínimo
+    if (filtrosArmazones.precioMin && armazon.precioVenta < parseFloat(filtrosArmazones.precioMin)) {
+      return false
+    }
+
+    // Filtro por precio máximo
+    if (filtrosArmazones.precioMax && armazon.precioVenta > parseFloat(filtrosArmazones.precioMax)) {
+      return false
+    }
+
+    // Filtro por búsqueda
+    if (filtrosArmazones.busqueda) {
+      const searchTerm = filtrosArmazones.busqueda.toLowerCase()
+      const searchableText = [
+        armazon.codigo,
+        armazon.nombre,
+        armazon.marca,
+        armazon.modelo,
+        ...(armazon.colores || []),
+        ...(armazon.materiales || []),
+      ].join(" ").toLowerCase()
+      
+      if (!searchableText.includes(searchTerm)) {
+        return false
+      }
+    }
+
+    // Filtro por stock bajo
+    if (filtrosArmazones.stockBajo) {
+      const stockMinimo = armazon.stockMinimo || CONFIG.STOCK_MINIMO_ARMAZON
+      const stockCritico = armazon.stockCritico || CONFIG.STOCK_CRITICO_ARMAZON
+      
+      const filterValue = document.getElementById("filterArmazonStockBajo")?.value
+      
+      if (filterValue === "bajo" && armazon.stock > stockMinimo) {
+        return false
+      }
+      if (filterValue === "critico" && (armazon.stock > stockCritico || armazon.stock === 0)) {
+        return false
+      }
+      if (filterValue === "agotado" && armazon.stock > 0) {
+        return false
+      }
+      if (filterValue === "normal" && armazon.stock <= stockMinimo) {
+        return false
+      }
+    }
+
+    return true
+  })
+}
+
+// CORREGIDO: Función para mostrar productos filtrados con estado de paginación específico
 function displayFilteredProductos() {
   const tableBody = document.getElementById("productosTableBody")
   if (!tableBody) return
 
-  // Aplicar filtros
-  const filteredProducts = productosCache.filter((producto) => {
-    return true
-  })
+  console.log("Iniciando displayFilteredProductos con", productosCache.length, "productos en cache")
 
-  // Calcular paginación
-  totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage))
-  if (currentPage > totalPages) currentPage = totalPages
-
-  const startIdx = (currentPage - 1) * itemsPerPage
-  const endIdx = startIdx + itemsPerPage
-  const pageProducts = filteredProducts.slice(startIdx, endIdx)
-
-  // Mostrar resultados
-  if (pageProducts.length === 0) {
+  // Verificar que el cache tenga datos antes de proceder
+  if (productosCache.length === 0) {
+    console.log("Cache de productos vacío, mostrando mensaje")
     tableBody.innerHTML =
-      '<tr><td colspan="8" class="py-8 text-center text-gray-500 dark:text-gray-400">No se encontraron productos que coincidan con los filtros</td></tr>'
+      '<tr><td colspan="8" class="py-8 text-center text-gray-500 dark:text-gray-400">No hay productos registrados</td></tr>'
+    
+    paginationState.productos.totalPages = 1
+    paginationState.productos.currentPage = 1
     updatePaginationControls()
+    updateResultsCounter("productos", 0, 0)
     return
   }
 
-  // Crear filas de la tabla
-  const fragment = document.createDocumentFragment()
-  pageProducts.forEach((producto) => {
-    const row = createProductRow(producto)
-    fragment.appendChild(row)
-  })
+  // Aplicar filtros
+  const filteredProducts = applyProductFilters(productosCache)
+  console.log("Productos después de filtros:", filteredProducts.length)
 
-  tableBody.innerHTML = ""
-  tableBody.appendChild(fragment)
+  // CORREGIDO: Calcular paginación usando estado específico
+  const state = paginationState.productos
+  state.totalPages = Math.max(1, Math.ceil(filteredProducts.length / state.itemsPerPage))
+  console.log("Total de páginas calculadas:", state.totalPages)
+  
+  // Asegurar que currentPage esté en rango válido
+  if (state.currentPage > state.totalPages) {
+    state.currentPage = state.totalPages
+  }
+  if (state.currentPage < 1) {
+    state.currentPage = 1
+  }
 
-  setupProductoEvents()
+  const startIdx = (state.currentPage - 1) * state.itemsPerPage
+  const endIdx = startIdx + state.itemsPerPage
+  const pageProducts = filteredProducts.slice(startIdx, endIdx)
+
+  console.log(`Mostrando productos ${startIdx + 1} a ${Math.min(endIdx, filteredProducts.length)} de ${filteredProducts.length}`)
+
+  // Mostrar resultados
+  if (filteredProducts.length === 0) {
+    tableBody.innerHTML =
+      '<tr><td colspan="8" class="py-8 text-center text-gray-500 dark:text-gray-400">No se encontraron productos que coincidan con los filtros</td></tr>'
+  } else {
+    // Crear filas de la tabla
+    const fragment = document.createDocumentFragment()
+    pageProducts.forEach((producto) => {
+      const row = createProductRow(producto)
+      fragment.appendChild(row)
+    })
+
+    tableBody.innerHTML = ""
+    tableBody.appendChild(fragment)
+    setupProductoEvents()
+  }
+
+  // Actualizar controles DESPUÉS de procesar los datos
   updateResultsCounter("productos", filteredProducts.length, productosCache.length)
   updatePaginationControls()
+  
+  console.log("displayFilteredProductos completado exitosamente")
 }
 
-// Función para mostrar armazones filtrados
+// CORREGIDO: Función para mostrar armazones filtrados con estado de paginación específico
 function displayFilteredArmazones() {
   const tableBody = document.getElementById("armazonesTableBody")
   if (!tableBody) return
 
-  const filteredFrames = armazonesCache.filter((armazon) => {
-    // ...filtros existentes...
-    return true
-  })
+  console.log("Iniciando displayFilteredArmazones con", armazonesCache.length, "armazones en cache")
 
-  totalPages = Math.max(1, Math.ceil(filteredFrames.length / itemsPerPage))
-  if (currentPage > totalPages) currentPage = totalPages
-
-  const startIdx = (currentPage - 1) * itemsPerPage
-  const endIdx = startIdx + itemsPerPage
-  const pageFrames = filteredFrames.slice(startIdx, endIdx)
-
-  if (pageFrames.length === 0) {
+  // Verificar que el cache tenga datos antes de proceder
+  if (armazonesCache.length === 0) {
+    console.log("Cache de armazones vacío, mostrando mensaje")
     tableBody.innerHTML =
-      '<tr><td colspan="10" class="py-8 text-center text-gray-500 dark:text-gray-400">No se encontraron armazones que coincidan con los filtros</td></tr>'
+      '<tr><td colspan="10" class="py-8 text-center text-gray-500 dark:text-gray-400">No hay armazones registrados</td></tr>'
+    
+    paginationState.armazones.totalPages = 1
+    paginationState.armazones.currentPage = 1
     updatePaginationControls()
+    updateResultsCounter("armazones", 0, 0)
     return
   }
 
-  const fragment = document.createDocumentFragment()
-  pageFrames.forEach((armazon) => {
-    const row = createFrameRow(armazon)
-    fragment.appendChild(row)
-  })
+  // Aplicar filtros
+  const filteredFrames = applyFrameFilters(armazonesCache)
+  console.log("Armazones después de filtros:", filteredFrames.length)
 
-  tableBody.innerHTML = ""
-  tableBody.appendChild(fragment)
+  // CORREGIDO: Calcular paginación usando estado específico
+  const state = paginationState.armazones
+  state.totalPages = Math.max(1, Math.ceil(filteredFrames.length / state.itemsPerPage))
+  console.log("Total de páginas calculadas:", state.totalPages)
+  
+  // Asegurar que currentPage esté en rango válido
+  if (state.currentPage > state.totalPages) {
+    state.currentPage = state.totalPages
+  }
+  if (state.currentPage < 1) {
+    state.currentPage = 1
+  }
 
-  setupArmazonEvents()
+  const startIdx = (state.currentPage - 1) * state.itemsPerPage
+  const endIdx = startIdx + state.itemsPerPage
+  const pageFrames = filteredFrames.slice(startIdx, endIdx)
+
+  console.log(`Mostrando armazones ${startIdx + 1} a ${Math.min(endIdx, filteredFrames.length)} de ${filteredFrames.length}`)
+
+  // Mostrar resultados
+  if (filteredFrames.length === 0) {
+    tableBody.innerHTML =
+      '<tr><td colspan="10" class="py-8 text-center text-gray-500 dark:text-gray-400">No se encontraron armazones que coincidan con los filtros</td></tr>'
+  } else {
+    // Crear filas de la tabla
+    const fragment = document.createDocumentFragment()
+    pageFrames.forEach((armazon) => {
+      const row = createFrameRow(armazon)
+      fragment.appendChild(row)
+    })
+
+    tableBody.innerHTML = ""
+    tableBody.appendChild(fragment)
+    setupArmazonEvents()
+  }
+
+  // Actualizar controles DESPUÉS de procesar los datos
   updateResultsCounter("armazones", filteredFrames.length, armazonesCache.length)
   updatePaginationControls()
+  
+  console.log("displayFilteredArmazones completado exitosamente")
 }
 
-// ===== FUNCION PARA LA PAGINACIÓN =====
+// CORREGIDO: Función para la paginación con estado específico
 function updatePaginationControls() {
   const prevBtn = document.getElementById("prevPageBtn")
   const nextBtn = document.getElementById("nextPageBtn")
   const currentPageSpan = document.getElementById("currentPage")
   const totalPagesSpan = document.getElementById("totalPages")
 
-  if (prevBtn) prevBtn.disabled = currentPage <= 1
-  if (nextBtn) nextBtn.disabled = currentPage >= totalPages
-  if (currentPageSpan) currentPageSpan.textContent = currentPage
-  if (totalPagesSpan) totalPagesSpan.textContent = totalPages
+  // CORREGIDO: Obtener estado de la pestaña activa
+  const activeTab = getActiveTab()
+  const state = paginationState[activeTab]
+
+  // Verificar que los elementos existan antes de actualizarlos
+  if (prevBtn) {
+    prevBtn.disabled = state.currentPage <= 1
+    prevBtn.style.opacity = state.currentPage <= 1 ? "0.5" : "1"
+    prevBtn.style.cursor = state.currentPage <= 1 ? "not-allowed" : "pointer"
+  }
+  
+  if (nextBtn) {
+    nextBtn.disabled = state.currentPage >= state.totalPages
+    nextBtn.style.opacity = state.currentPage >= state.totalPages ? "0.5" : "1"
+    nextBtn.style.cursor = state.currentPage >= state.totalPages ? "not-allowed" : "pointer"
+  }
+  
+  if (currentPageSpan) {
+    currentPageSpan.textContent = state.currentPage
+  }
+  
+  if (totalPagesSpan) {
+    totalPagesSpan.textContent = state.totalPages
+  }
+
+  // Log detallado para debugging
+  console.log(`Paginación actualizada (${activeTab}): Página ${state.currentPage} de ${state.totalPages} (${state.itemsPerPage} items por página)`)
 }
 
 // ===== FUNCIONES DE CREACIÓN DE FILAS =====
