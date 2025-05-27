@@ -34,6 +34,13 @@ let searchTimeout = null;
 let allVentas = [];
 let filteredVentas = [];
 
+// Cache para optimización
+let ventasCache = new Map();
+let clientesCache = new Map();
+let saldoCache = new Map();
+let lastCacheUpdate = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 // Filtros activos
 let filtrosVentas = {
     cliente: '',
@@ -55,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Verificar si hay un cliente en la URL
         checkClienteFromURL();
 
-        // Cargar datos necesarios
+        // Cargar datos necesarios en paralelo
         await Promise.all([
             loadClientes(),
             loadProductos(),
@@ -72,6 +79,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Cargar datos iniciales de ventas
         await loadVentas();
+
+        // Configurar actualización automática cada 30 segundos
+        setInterval(async () => {
+            if (Date.now() - lastCacheUpdate > CACHE_DURATION) {
+                await loadVentas();
+            }
+        }, 30000);
 
     } catch (error) {
         console.error("Error al inicializar la página de ventas:", error);
@@ -137,17 +151,20 @@ function checkClienteFromURL() {
     }
 }
 
-// Función para cargar clientes
+// Función para cargar clientes con cache
 async function loadClientes() {
     try {
         const clientesSnapshot = await getDocs(collection(db, 'clientes'));
         clientes = [];
+        clientesCache.clear();
 
         clientesSnapshot.forEach(doc => {
-            clientes.push({
+            const clienteData = {
                 id: doc.id,
                 ...doc.data()
-            });
+            };
+            clientes.push(clienteData);
+            clientesCache.set(doc.id, clienteData);
         });
 
         console.log("Clientes cargados:", clientes.length);
@@ -486,7 +503,7 @@ function setupClientSelector() {
                     clienteIdInput.value = option.id;
                     clienteDropdown.style.display = 'none';
                     if (option.isShowroom) {
-                        hideConvenioInfo(); // Esto limpia los descuentos y mensajes
+                        hideConvenioInfo();
                     } else {
                         updateConvenioInfo(option);
                     }
@@ -585,7 +602,7 @@ function hideConvenioInfo() {
         const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
         if (descuentoInput) {
             descuentoInput.value = 0;
-            delete descuentoInput.dataset.manuallySet; // Limpiar flag manual
+            delete descuentoInput.dataset.manuallySet;
             descuentoInput.dispatchEvent(new Event('input'));
         }
         if (descuentoMsg) {
@@ -605,7 +622,6 @@ function applyConvenioDiscountToProducts(descuentoPorcentaje) {
         if (descuentoInput && !descuentoInput.dataset.manuallySet) {
             descuentoInput.value = descuentoPorcentaje;
             descuentoInput.dispatchEvent(new Event('input'));
-            // Mostrar mensaje si hay descuento
             if (descuentoPorcentaje > 0 && descuentoMsg) {
                 descuentoMsg.textContent = `Descuento de convenio aplicado: ${descuentoPorcentaje}%`;
                 descuentoMsg.style.display = 'block';
@@ -625,13 +641,10 @@ function updateAbonoVisibility() {
 
     if (abonoGroup && abonoInput) {
         if (clienteId) {
-            // Venta a cliente registrado - mostrar campo de abono
             abonoGroup.style.display = 'block';
             abonoInput.value = '0';
         } else {
-            // Venta de mostrador - ocultar campo de abono
             abonoGroup.style.display = 'none';
-            // El abono se establecerá automáticamente al total
             const total = document.getElementById('total').value;
             abonoInput.value = total || '0';
         }
@@ -709,19 +722,15 @@ function addProductoItem() {
     `;
 
     productosContainer.appendChild(productoItem);
-
-    // Configurar eventos para el nuevo producto
     setupProductoEvents(productoIndex);
 }
 
 // Configurar eventos para un producto
 function setupProductoEvents(index) {
-    // Evento para eliminar producto
     const removeBtn = document.querySelector(`.producto-item:nth-child(${index + 1}) .remove-producto`);
     if (removeBtn) {
         removeBtn.addEventListener('click', function () {
             this.closest('.producto-item').remove();
-            // Renumerar productos
             document.querySelectorAll('.producto-item').forEach((item, i) => {
                 item.querySelector('h4').textContent = `Producto ${i + 1}`;
             });
@@ -729,15 +738,12 @@ function setupProductoEvents(index) {
         });
     }
 
-    // Eventos para controles de cantidad
     const decreaseBtn = document.querySelector(`.decrease-btn[data-index="${index}"]`);
     const increaseBtn = document.querySelector(`.increase-btn[data-index="${index}"]`);
     const cantidadInput = document.getElementById(`cantidad_${index}`);
 
-
     if (decreaseBtn && cantidadInput) {
         decreaseBtn.addEventListener('click', () => {
-            // Validar selección de tipo y producto
             const tipoProducto = document.getElementById(`tipoProducto_${index}`);
             const productoSelect = document.getElementById(`producto_${index}`);
             if (!tipoProducto.value || !productoSelect.value) {
@@ -754,7 +760,6 @@ function setupProductoEvents(index) {
 
     if (increaseBtn && cantidadInput) {
         increaseBtn.addEventListener('click', () => {
-            // Validar selección de tipo y producto
             const tipoProducto = document.getElementById(`tipoProducto_${index}`);
             const productoSelect = document.getElementById(`producto_${index}`);
             if (!tipoProducto.value || !productoSelect.value) {
@@ -770,14 +775,12 @@ function setupProductoEvents(index) {
         });
     }
 
-    // Evento para cambiar tipo de producto
     const tipoProducto = document.getElementById(`tipoProducto_${index}`);
     const productoSelect = document.getElementById(`producto_${index}`);
 
     if (tipoProducto && productoSelect) {
         tipoProducto.addEventListener('change', () => {
             const tipo = tipoProducto.value;
-
             productoSelect.disabled = !tipo;
             productoSelect.innerHTML = '<option value="">Seleccione producto</option>';
 
@@ -806,26 +809,22 @@ function setupProductoEvents(index) {
             }
         });
 
-        // Evento para seleccionar producto
         productoSelect.addEventListener('change', () => {
             const selectedOption = productoSelect.options[productoSelect.selectedIndex];
             const precio = parseFloat(selectedOption.dataset.precio) || 0;
             const stock = parseInt(selectedOption.dataset.stock) || 0;
 
-            // Establecer precio
             const precioInput = document.getElementById(`precio_${index}`);
             if (precioInput) {
                 precioInput.value = precio.toFixed(2);
                 precioInput.dataset.original = precio;
             }
 
-            // Configurar cantidad y stock
             if (cantidadInput) {
                 cantidadInput.max = stock;
                 cantidadInput.dataset.stock = stock;
                 cantidadInput.value = 1;
 
-                // Actualizar botones de cantidad
                 if (decreaseBtn) {
                     decreaseBtn.disabled = cantidadInput.value <= 1;
                 }
@@ -833,7 +832,6 @@ function setupProductoEvents(index) {
                     increaseBtn.disabled = cantidadInput.value >= stock;
                 }
 
-                // Mostrar información de stock
                 const stockInfo = document.getElementById(`stockInfo_${index}`);
                 if (stockInfo) {
                     stockInfo.textContent = `Stock disponible: ${stock}`;
@@ -841,7 +839,6 @@ function setupProductoEvents(index) {
                 }
             }
 
-            // Aplicar descuento de convenio si existe
             const clienteId = document.getElementById('clienteId').value;
             if (clienteId) {
                 const cliente = clientes.find(c => c.id === clienteId);
@@ -857,12 +854,10 @@ function setupProductoEvents(index) {
                 }
             }
 
-            // Calcular subtotal inicial
             calcularSubtotal(index);
         });
     }
 
-    // Eventos para calcular subtotal
     const precioInput = document.getElementById(`precio_${index}`);
     const subtotalInput = document.getElementById(`subtotal_${index}`);
     const descuentoInput = document.getElementById(`descuento_${index}`);
@@ -872,7 +867,6 @@ function setupProductoEvents(index) {
             const cantidad = parseInt(cantidadInput.value) || 1;
             const stock = parseInt(cantidadInput.dataset.stock) || 999;
 
-            // Validar cantidad
             if (cantidad < 1) {
                 cantidadInput.value = 1;
             } else if (cantidad > stock) {
@@ -880,7 +874,6 @@ function setupProductoEvents(index) {
                 cantidadInput.value = stock;
             }
 
-            // Actualizar botones
             if (decreaseBtn) {
                 decreaseBtn.disabled = parseInt(cantidadInput.value) <= 1;
             }
@@ -896,7 +889,6 @@ function setupProductoEvents(index) {
         descuentoInput.addEventListener('input', () => {
             const descuento = parseFloat(descuentoInput.value) || 0;
 
-            // Marcar como configurado manualmente
             if (descuento !== 0) {
                 descuentoInput.dataset.manuallySet = 'true';
             } else {
@@ -927,15 +919,12 @@ function calcularSubtotal(index) {
     const precioOriginal = parseFloat(precioInput.dataset.original) || parseFloat(precioInput.value) || 0;
     const descuento = parseFloat(descuentoInput?.value) || 0;
 
-    // Calcular precio con descuento
     const precioConDescuento = precioOriginal * (1 - (descuento / 100));
     precioInput.value = precioConDescuento.toFixed(2);
 
-    // Calcular subtotal
     const subtotal = cantidad * precioConDescuento;
     subtotalInput.value = subtotal.toFixed(2);
 
-    // Calcular total general
     calcularTotal();
 }
 
@@ -953,7 +942,6 @@ function calcularTotal() {
         totalInput.value = total.toFixed(2);
     }
 
-    // Actualizar abono para ventas de mostrador
     const clienteId = document.getElementById('clienteId').value;
     const abonoInput = document.getElementById('abono');
 
@@ -961,7 +949,6 @@ function calcularTotal() {
         abonoInput.value = total.toFixed(2);
     }
 
-    // Actualizar límite máximo del abono
     if (abonoInput) {
         abonoInput.max = total;
     }
@@ -988,14 +975,12 @@ async function handleSaleSubmit() {
         const total = parseFloat(document.getElementById('total').value) || 0;
         const observaciones = document.getElementById('observaciones').value;
 
-        // Validar que haya al menos un producto
         const productosItems = document.querySelectorAll('.producto-item');
         if (productosItems.length === 0) {
             showToast('Debe agregar al menos un producto', 'warning');
             return;
         }
 
-        // Validar y recopilar productos
         const productos = [];
         const productosParaActualizar = [];
         let isValid = true;
@@ -1014,7 +999,6 @@ async function handleSaleSubmit() {
                 break;
             }
 
-            // Obtener nombre del producto
             const productoSelect = document.getElementById(`producto_${index}`);
             const nombreProducto = productoSelect?.options[productoSelect.selectedIndex]?.text || 'Producto desconocido';
 
@@ -1037,19 +1021,16 @@ async function handleSaleSubmit() {
 
         if (!isValid) return;
 
-        // Validar abono
         if (abono > total) {
             showToast('El abono no puede ser mayor al total', 'warning');
             return;
         }
 
-        // Para ventas de mostrador, el pago debe ser completo
         if (!clienteId && abono < total) {
             showToast('Las ventas de mostrador deben pagarse completamente', 'warning');
             return;
         }
 
-        // Confirmar la venta
         const confirmMessage = `¿Confirmar venta por $${total.toFixed(2)}?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`;
 
         showCustomAlert(
@@ -1090,7 +1071,6 @@ async function processSale(saleData) {
             observaciones
         } = saleData;
 
-        // Determinar información de convenio
         let convenio = false;
         let empresaId = null;
 
@@ -1102,7 +1082,6 @@ async function processSale(saleData) {
             }
         }
 
-        // Determinar estado de la venta
         let estado = 'pendiente';
         if (abono >= total) {
             estado = 'pagada';
@@ -1110,7 +1089,6 @@ async function processSale(saleData) {
             estado = 'parcial';
         }
 
-        // Crear objeto de venta
         const ventaData = {
             clienteId: clienteId || null,
             fecha: fechaVenta ? new Date(fechaVenta) : new Date(),
@@ -1126,18 +1104,14 @@ async function processSale(saleData) {
             updatedAt: serverTimestamp()
         };
 
-        // Guardar venta
         const ventaRef = await addDoc(collection(db, 'ventas'), ventaData);
 
-        // Actualizar inventario
         await actualizarInventario(productosParaActualizar);
 
-        // Registrar abono inicial si existe
         if (abono > 0) {
             await registrarAbono(ventaRef.id, clienteId, abono, 'Abono inicial');
         }
 
-        // Actualizar última visita del cliente
         if (clienteId) {
             await updateDoc(doc(db, 'clientes', clienteId), {
                 ultimaVisita: serverTimestamp()
@@ -1146,8 +1120,11 @@ async function processSale(saleData) {
 
         showToast('Venta registrada correctamente', 'success');
 
-        // Cerrar modal y recargar datos
         document.getElementById('saleModal').style.display = 'none';
+        
+        // Limpiar cache y recargar
+        ventasCache.clear();
+        saldoCache.clear();
         await loadVentas();
         await Promise.all([loadProductos(), loadArmazones()]);
 
@@ -1219,17 +1196,15 @@ function setupSearchEvents() {
 
     if (searchVenta) {
         searchVenta.addEventListener('input', (e) => {
-            // Limpiar timeout anterior
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
             }
 
-            // Establecer nuevo timeout para búsqueda en tiempo real
             searchTimeout = setTimeout(() => {
                 filtrosVentas.busqueda = e.target.value.trim();
                 currentPage = 1;
                 applyFilters();
-            }, 300); // Esperar 300ms después de que el usuario deje de escribir
+            }, 300);
         });
     }
 }
@@ -1296,9 +1271,7 @@ function clearFilters() {
 
 // Aplicar filtros
 function applyFilters() {
-    // Filtrar ventas en memoria
     filteredVentas = allVentas.filter(venta => {
-        // Filtro por búsqueda
         if (filtrosVentas.busqueda) {
             const busqueda = filtrosVentas.busqueda.toLowerCase();
             const matchId = venta.id.toLowerCase().includes(busqueda);
@@ -1314,12 +1287,10 @@ function applyFilters() {
             }
         }
 
-        // Filtro por estado
         if (filtrosVentas.estado && venta.estado !== filtrosVentas.estado) {
             return false;
         }
 
-        // Filtro por convenio
         if (filtrosVentas.convenio) {
             const hasConvenio = filtrosVentas.convenio === 'true';
             if (venta.convenio !== hasConvenio) {
@@ -1327,7 +1298,6 @@ function applyFilters() {
             }
         }
 
-        // Filtro por fecha
         if (filtrosVentas.fechaInicio || filtrosVentas.fechaFin) {
             const fechaVenta = venta.fecha instanceof Timestamp
                 ? venta.fecha.toDate()
@@ -1342,7 +1312,7 @@ function applyFilters() {
 
             if (filtrosVentas.fechaFin) {
                 const fechaFin = new Date(filtrosVentas.fechaFin);
-                fechaFin.setHours(23, 59, 59, 999); // Incluir todo el día
+                fechaFin.setHours(23, 59, 59, 999);
                 if (fechaVenta > fechaFin) {
                     return false;
                 }
@@ -1352,12 +1322,10 @@ function applyFilters() {
         return true;
     });
 
-    // Calcular paginación
     totalPages = Math.ceil(filteredVentas.length / SALES_PER_PAGE);
     if (totalPages === 0) totalPages = 1;
     if (currentPage > totalPages) currentPage = totalPages;
 
-    // Mostrar ventas paginadas
     displayVentas();
     updatePaginationControls();
 }
@@ -1412,37 +1380,50 @@ function updatePaginationControls() {
     }
 }
 
-// Función para cargar ventas
+// Función optimizada para cargar ventas
 async function loadVentas() {
     const tableBody = document.getElementById('ventasTableBody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center"><div class="spinner mr-2"></div>Cargando ventas...</td></tr>';
+    // Mostrar skeleton loading
+    showSkeletonLoading(tableBody);
 
     try {
-        // Cargar todas las ventas
-        const ventasQuery = query(
+        const startTime = performance.now();
+        
+        // Construir query optimizada
+        let ventasQuery = query(
             collection(db, 'ventas'),
             orderBy('fecha', 'desc'),
-            limit(100) // Limitar a las últimas 100 ventas para rendimiento
+            limit(50) // Reducido de 100 a 50 para mejor rendimiento
         );
 
         const ventasSnapshot = await getDocs(ventasQuery);
-
+        
+        // Procesar ventas en lotes para mejor rendimiento
         allVentas = [];
-        for (const docSnap of ventasSnapshot.docs) {
+        const ventaIds = [];
+        
+        ventasSnapshot.forEach(doc => {
             const venta = {
-                id: docSnap.id,
-                ...docSnap.data()
+                id: doc.id,
+                ...doc.data()
             };
-
-            // Calcular saldo pendiente actual
-            venta.saldoInfo = await calcularSaldoPendiente(venta.id);
             allVentas.push(venta);
-        }
+            ventaIds.push(doc.id);
+        });
 
+        // Calcular saldos en paralelo usando cache
+        await calculateSaldosInBatch(ventaIds);
+
+        // Actualizar cache
+        lastCacheUpdate = Date.now();
+        
         // Aplicar filtros y mostrar
         applyFilters();
+
+        const endTime = performance.now();
+        console.log(`Ventas cargadas en ${(endTime - startTime).toFixed(2)}ms`);
 
     } catch (error) {
         console.error("Error al cargar ventas:", error);
@@ -1451,37 +1432,107 @@ async function loadVentas() {
     }
 }
 
-// Mostrar ventas en la tabla
+// Mostrar skeleton loading
+function showSkeletonLoading(tableBody) {
+    const skeletonRows = Array.from({ length: 5 }, (_, i) => `
+        <tr class="animate-pulse">
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-32"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-16"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-12"></div></td>
+            <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+        </tr>
+    `).join('');
+    
+    tableBody.innerHTML = skeletonRows;
+}
+
+// Calcular saldos en lotes para mejor rendimiento
+async function calculateSaldosInBatch(ventaIds) {
+    const batchSize = 10;
+    const batches = [];
+    
+    for (let i = 0; i < ventaIds.length; i += batchSize) {
+        batches.push(ventaIds.slice(i, i + batchSize));
+    }
+
+    // Procesar lotes en paralelo
+    await Promise.all(batches.map(async (batch) => {
+        await Promise.all(batch.map(async (ventaId) => {
+            const venta = allVentas.find(v => v.id === ventaId);
+            if (venta) {
+                venta.saldoInfo = await calcularSaldoPendiente(ventaId);
+            }
+        }));
+    }));
+}
+
+// Mostrar ventas en la tabla con optimizaciones
 function displayVentas() {
     const tableBody = document.getElementById('ventasTableBody');
     if (!tableBody) return;
 
-    // Calcular índices para paginación
     const startIndex = (currentPage - 1) * SALES_PER_PAGE;
     const endIndex = startIndex + SALES_PER_PAGE;
     const ventasPagina = filteredVentas.slice(startIndex, endIndex);
 
-    // Limpiar tabla
-    tableBody.innerHTML = '';
+    // Usar DocumentFragment para mejor rendimiento
+    const fragment = document.createDocumentFragment();
 
     if (ventasPagina.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center">No se encontraron ventas</td></tr>';
-        return;
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="9" class="py-4 text-center">No se encontraron ventas</td>';
+        fragment.appendChild(row);
+    } else {
+        ventasPagina.forEach(venta => {
+            const row = createVentaRow(venta);
+            fragment.appendChild(row);
+        });
     }
 
-    // Agregar ventas a la tabla
-    ventasPagina.forEach(venta => {
-        const row = createVentaRow(venta);
-        tableBody.appendChild(row);
-    });
+    // Actualizar DOM una sola vez
+    tableBody.innerHTML = '';
+    tableBody.appendChild(fragment);
 
-    // Configurar eventos para los botones
-    setupSaleEvents();
+    // Configurar eventos usando delegación
+    setupSaleEventsOptimized();
 }
 
-// Crear fila de venta
+// Configurar eventos optimizados usando delegación
+function setupSaleEventsOptimized() {
+    const tableBody = document.getElementById('ventasTableBody');
+    if (!tableBody) return;
+
+    // Remover listeners anteriores
+    tableBody.removeEventListener('click', handleTableClick);
+    
+    // Agregar listener único usando delegación de eventos
+    tableBody.addEventListener('click', handleTableClick);
+}
+
+// Manejar clicks en la tabla usando delegación
+function handleTableClick(event) {
+    const button = event.target.closest('button');
+    if (!button) return;
+
+    const saleId = button.getAttribute('data-id');
+    const clienteId = button.getAttribute('data-cliente');
+
+    if (button.classList.contains('view-sale')) {
+        viewSale(saleId);
+    } else if (button.classList.contains('add-payment')) {
+        addPayment(saleId, clienteId);
+    } else if (button.classList.contains('cancel-sale')) {
+        confirmCancelSale(saleId);
+    }
+}
+
+// Crear fila de venta optimizada
 function createVentaRow(venta) {
-    // Formatear fecha
     let fechaText = 'No disponible';
     if (venta.fecha) {
         const fecha = venta.fecha instanceof Timestamp
@@ -1490,10 +1541,10 @@ function createVentaRow(venta) {
         fechaText = fecha.toLocaleDateString();
     }
 
-    // Obtener nombre del cliente
+    // Obtener nombre del cliente usando cache
     let clienteText = 'Venta de mostrador';
     if (venta.clienteId) {
-        const cliente = clientes.find(c => c.id === venta.clienteId);
+        const cliente = clientesCache.get(venta.clienteId) || clientes.find(c => c.id === venta.clienteId);
         clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
     }
 
@@ -1563,37 +1614,6 @@ function getEstadoText(estado) {
     return estados[estado] || 'Desconocido';
 }
 
-// Configurar eventos para las ventas
-function setupSaleEvents() {
-    // Configurar botones para ver ventas
-    const viewButtons = document.querySelectorAll('.view-sale');
-    viewButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const saleId = button.getAttribute('data-id');
-            viewSale(saleId);
-        });
-    });
-
-    // Configurar botones para agregar pagos
-    const addPaymentButtons = document.querySelectorAll('.add-payment');
-    addPaymentButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const saleId = button.getAttribute('data-id');
-            const clienteId = button.getAttribute('data-cliente');
-            addPayment(saleId, clienteId);
-        });
-    });
-
-    // Configurar botones para cancelar ventas
-    const cancelButtons = document.querySelectorAll('.cancel-sale');
-    cancelButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const saleId = button.getAttribute('data-id');
-            confirmCancelSale(saleId);
-        });
-    });
-}
-
 // Función para ver una venta
 async function viewSale(saleId) {
     try {
@@ -1607,7 +1627,6 @@ async function viewSale(saleId) {
                 ...venta
             };
 
-            // Crear y mostrar modal de detalle
             await showSaleDetailModal(currentSale);
         } else {
             showToast('No se encontró la venta', 'danger');
@@ -1620,7 +1639,6 @@ async function viewSale(saleId) {
 
 // Mostrar modal de detalle de venta
 async function showSaleDetailModal(venta) {
-    // Crear modal si no existe
     let saleDetailModal = document.getElementById('saleDetailModal');
     if (!saleDetailModal) {
         saleDetailModal = document.createElement('div');
@@ -1679,8 +1697,6 @@ async function showSaleDetailModal(venta) {
                                 <tfoot>
                                     <tr class="font-bold">
                                         <td class="py-2 px-4" colspan="4">Total</td>
-                                    
-</cut_off_point>
                                         <td class="py-2 px-4" id="detailSaleTotal"></td>
                                     </tr>
                                 </tfoot>
@@ -1748,15 +1764,10 @@ async function showSaleDetailModal(venta) {
         `;
 
         document.body.appendChild(saleDetailModal);
-
-        // Configurar eventos para el modal
         setupSaleDetailModalEvents(saleDetailModal);
     }
 
-    // Mostrar modal
     saleDetailModal.style.display = 'block';
-
-    // Llenar información
     await populateSaleDetailModal(venta);
 }
 
@@ -1792,7 +1803,6 @@ function setupSaleDetailModalEvents(modal) {
         });
     }
 
-    // Cerrar modal al hacer clic fuera del contenido
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
             modal.style.display = 'none';
@@ -1802,10 +1812,8 @@ function setupSaleDetailModalEvents(modal) {
 
 // Llenar información del modal de detalle
 async function populateSaleDetailModal(venta) {
-    // Información general
     document.getElementById('detailSaleId').textContent = venta.id;
 
-    // Formatear fecha
     let fechaText = 'No disponible';
     if (venta.fecha) {
         const fecha = venta.fecha instanceof Timestamp
@@ -1815,20 +1823,17 @@ async function populateSaleDetailModal(venta) {
     }
     document.getElementById('detailSaleDate').textContent = fechaText;
 
-    // Cliente
     let clienteText = 'Venta de mostrador';
     if (venta.clienteId) {
-        const cliente = clientes.find(c => c.id === venta.clienteId);
+        const cliente = clientesCache.get(venta.clienteId) || clientes.find(c => c.id === venta.clienteId);
         clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
     }
     document.getElementById('detailSaleClient').textContent = clienteText;
 
-    // Estado
     const estadoElement = document.getElementById('detailSaleStatus');
     estadoElement.textContent = getEstadoText(venta.estado);
     estadoElement.className = `status-${venta.estado}`;
 
-    // Convenio
     const convenioContainer = document.getElementById('detailConvenioContainer');
     const empresaContainer = document.getElementById('detailEmpresaContainer');
 
@@ -1848,7 +1853,6 @@ async function populateSaleDetailModal(venta) {
         empresaContainer.style.display = 'none';
     }
 
-    // Productos
     const productsBody = document.getElementById('detailProductsBody');
     productsBody.innerHTML = '';
 
@@ -1871,13 +1875,10 @@ async function populateSaleDetailModal(venta) {
         productsBody.innerHTML = '<tr><td colspan="5" class="py-2 px-4 text-center">No hay productos registrados</td></tr>';
     }
 
-    // Total
     document.getElementById('detailSaleTotal').textContent = `$${venta.total.toFixed(2)}`;
 
-    // Cargar pagos y abonos
     await loadSalePayments(venta.id);
 
-    // Observaciones
     const observacionesContainer = document.getElementById('detailObservacionesContainer');
     const observacionesElement = document.getElementById('detailSaleObservaciones');
 
@@ -1895,32 +1896,17 @@ async function loadSalePayments(ventaId) {
     paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center"><div class="spinner mr-2"></div>Cargando pagos...</td></tr>';
 
     try {
-        // Obtener venta para abono inicial
-        const ventaDoc = await getDoc(doc(db, 'ventas', ventaId));
+        const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
+            getDoc(doc(db, 'ventas', ventaId)),
+            getDocs(query(collection(db, 'abonos'), where('ventaId', '==', ventaId), orderBy('fecha', 'asc'))),
+            getDocs(query(collection(db, 'pagos'), where('ventaId', '==', ventaId), orderBy('fecha', 'asc')))
+        ]);
+
         const venta = ventaDoc.data();
-
-        // Obtener abonos
-        const abonosQuery = query(
-            collection(db, 'abonos'),
-            where('ventaId', '==', ventaId),
-            orderBy('fecha', 'asc')
-        );
-        const abonosSnapshot = await getDocs(abonosQuery);
-
-        // Obtener pagos
-        const pagosQuery = query(
-            collection(db, 'pagos'),
-            where('ventaId', '==', ventaId),
-            orderBy('fecha', 'asc')
-        );
-        const pagosSnapshot = await getDocs(pagosQuery);
-
-        // Compilar todos los pagos
         const pagos = [];
         let totalAbonado = 0;
         let totalPagado = 0;
 
-        // Agregar abono inicial si existe
         if (venta.abono > 0) {
             pagos.push({
                 tipo: 'abono',
@@ -1931,7 +1917,6 @@ async function loadSalePayments(ventaId) {
             totalAbonado += venta.abono;
         }
 
-        // Agregar abonos adicionales
         abonosSnapshot.forEach(doc => {
             const abono = doc.data();
             if (abono.descripcion !== 'Abono inicial') {
@@ -1945,7 +1930,6 @@ async function loadSalePayments(ventaId) {
             }
         });
 
-        // Agregar pagos
         pagosSnapshot.forEach(doc => {
             const pago = doc.data();
             pagos.push({
@@ -1957,14 +1941,12 @@ async function loadSalePayments(ventaId) {
             totalPagado += pago.monto;
         });
 
-        // Ordenar por fecha
         pagos.sort((a, b) => {
             const fechaA = a.fecha instanceof Timestamp ? a.fecha.toDate() : new Date(a.fecha);
             const fechaB = b.fecha instanceof Timestamp ? b.fecha.toDate() : new Date(b.fecha);
             return fechaA - fechaB;
         });
 
-        // Mostrar pagos
         paymentsBody.innerHTML = '';
 
         if (pagos.length > 0) {
@@ -1989,13 +1971,11 @@ async function loadSalePayments(ventaId) {
             paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">No hay pagos registrados</td></tr>';
         }
 
-        // Saldo pendiente
         const saldoPendiente = venta.total - totalAbonado - totalPagado;
         const saldoElement = document.getElementById('detailSalePending');
         saldoElement.textContent = `$${saldoPendiente.toFixed(2)}`;
         saldoElement.className = saldoPendiente > 0 ? 'text-red-500' : 'text-green-500';
 
-        // Mostrar/ocultar botón de agregar pago
         const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
         if (detailAddPaymentBtn) {
             if (saldoPendiente > 0 && venta.estado !== 'cancelada') {
@@ -2036,7 +2016,6 @@ async function addPayment(ventaId, clienteId) {
             return;
         }
 
-        // Mostrar modal de pago
         await showPaymentModal(ventaId, clienteId, saldoInfo);
 
     } catch (error) {
@@ -2047,7 +2026,6 @@ async function addPayment(ventaId, clienteId) {
 
 // Mostrar modal de pago
 async function showPaymentModal(ventaId, clienteId, saldoInfo) {
-    // Crear modal si no existe
     let paymentModal = document.getElementById('paymentModal');
     if (!paymentModal) {
         paymentModal = document.createElement('div');
@@ -2107,26 +2085,21 @@ async function showPaymentModal(ventaId, clienteId, saldoInfo) {
         `;
 
         document.body.appendChild(paymentModal);
-
-        // Configurar eventos
         setupPaymentModalEvents(paymentModal);
     }
 
-    // Mostrar modal y llenar datos
     paymentModal.style.display = 'block';
 
     document.getElementById('paymentVentaId').value = ventaId;
     document.getElementById('paymentClienteId').value = clienteId || '';
     document.getElementById('paymentSaldoPendiente').textContent = `$${saldoInfo.saldoPendiente.toFixed(2)}`;
 
-    // Establecer fecha actual
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     document.getElementById('paymentFecha').value = `${year}-${month}-${day}`;
 
-    // Limpiar otros campos
     document.getElementById('paymentTipo').value = 'abono';
     document.getElementById('paymentMonto').value = '';
     document.getElementById('paymentMetodo').value = 'efectivo';
@@ -2153,14 +2126,12 @@ function setupPaymentModalEvents(modal) {
         });
     }
 
-    // Cerrar modal al hacer clic fuera
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
             modal.style.display = 'none';
         }
     });
 
-    // Configurar cambio de tipo de pago
     if (paymentTipo && paymentMonto) {
         paymentTipo.addEventListener('change', async () => {
             const tipo = paymentTipo.value;
@@ -2175,7 +2146,6 @@ function setupPaymentModalEvents(modal) {
         });
     }
 
-    // Configurar formulario
     if (paymentForm) {
         paymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2195,20 +2165,17 @@ async function handlePaymentSubmit(modal) {
         const fecha = document.getElementById('paymentFecha').value;
         const descripcion = document.getElementById('paymentDescripcion').value;
 
-        // Validar monto
         if (monto <= 0) {
             showToast('El monto debe ser mayor a cero', 'warning');
             return;
         }
 
-        // Validar que el monto no sea mayor al saldo pendiente
         const saldoInfo = await calcularSaldoPendiente(ventaId);
         if (monto > saldoInfo.saldoPendiente) {
             showToast('El monto no puede ser mayor al saldo pendiente', 'warning');
             return;
         }
 
-        // Confirmar pago
         const confirmMessage = `¿Confirmar ${tipo} de $${monto.toFixed(2)}?`;
 
         showCustomAlert(
@@ -2240,14 +2207,12 @@ async function processPayment(paymentData) {
     try {
         const { ventaId, clienteId, tipo, monto, metodo, fecha, descripcion, modal } = paymentData;
 
-        // Registrar pago o abono
         if (tipo === 'abono') {
             await registrarAbono(ventaId, clienteId, monto, descripcion, metodo, fecha);
         } else {
             await registrarPago(ventaId, clienteId, monto, descripcion, metodo, fecha);
         }
 
-        // Actualizar estado de la venta
         const nuevoSaldoInfo = await calcularSaldoPendiente(ventaId);
         let nuevoEstado = 'pendiente';
 
@@ -2264,8 +2229,10 @@ async function processPayment(paymentData) {
 
         showToast(`${tipo === 'abono' ? 'Abono' : 'Pago'} registrado correctamente`, 'success');
 
-        // Cerrar modal y recargar datos
         modal.style.display = 'none';
+        
+        // Limpiar cache y recargar
+        saldoCache.delete(ventaId);
         await loadVentas();
 
     } catch (error) {
@@ -2323,6 +2290,9 @@ async function cancelSale(saleId) {
         });
 
         showToast('Venta cancelada correctamente', 'success');
+        
+        // Limpiar cache y recargar
+        saldoCache.delete(saleId);
         await loadVentas();
     } catch (error) {
         console.error("Error al cancelar venta:", error);
@@ -2330,10 +2300,21 @@ async function cancelSale(saleId) {
     }
 }
 
-// Función para calcular saldo pendiente de una venta
+// Función optimizada para calcular saldo pendiente con cache
 async function calcularSaldoPendiente(ventaId) {
+    // Verificar cache primero
+    const cached = saldoCache.get(ventaId);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+    }
+
     try {
-        const ventaDoc = await getDoc(doc(db, 'ventas', ventaId));
+        const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
+            getDoc(doc(db, 'ventas', ventaId)),
+            getDocs(query(collection(db, 'abonos'), where('ventaId', '==', ventaId))),
+            getDocs(query(collection(db, 'pagos'), where('ventaId', '==', ventaId)))
+        ]);
+
         if (!ventaDoc.exists()) {
             throw new Error('La venta no existe');
         }
@@ -2341,16 +2322,7 @@ async function calcularSaldoPendiente(ventaId) {
         const venta = ventaDoc.data();
         const total = venta.total;
 
-        // Obtener abonos
-        const abonosQuery = query(
-            collection(db, 'abonos'),
-            where('ventaId', '==', ventaId)
-        );
-        const abonosSnapshot = await getDocs(abonosQuery);
-
-        // Calcular total abonado (incluir abono inicial)
         let totalAbonado = venta.abono || 0;
-
         abonosSnapshot.forEach(doc => {
             const abono = doc.data();
             if (abono.descripcion !== 'Abono inicial') {
@@ -2358,29 +2330,28 @@ async function calcularSaldoPendiente(ventaId) {
             }
         });
 
-        // Obtener pagos
-        const pagosQuery = query(
-            collection(db, 'pagos'),
-            where('ventaId', '==', ventaId)
-        );
-        const pagosSnapshot = await getDocs(pagosQuery);
-
-        // Calcular total pagado
         let totalPagado = 0;
         pagosSnapshot.forEach(doc => {
             const pago = doc.data();
             totalPagado += pago.monto;
         });
 
-        // Calcular saldo pendiente
         const saldoPendiente = Math.max(0, total - totalAbonado - totalPagado);
 
-        return {
+        const result = {
             total,
             totalAbonado,
             totalPagado,
             saldoPendiente
         };
+
+        // Guardar en cache
+        saldoCache.set(ventaId, {
+            data: result,
+            timestamp: Date.now()
+        });
+
+        return result;
     } catch (error) {
         console.error("Error al calcular saldo pendiente:", error);
         return {
@@ -2391,6 +2362,16 @@ async function calcularSaldoPendiente(ventaId) {
         };
     }
 }
+
+// Limpiar cache periódicamente
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of saldoCache.entries()) {
+        if (now - value.timestamp > CACHE_DURATION) {
+            saldoCache.delete(key);
+        }
+    }
+}, CACHE_DURATION);
 
 // Exportar funciones globales para uso en otros archivos
 window.loadVentas = loadVentas;
