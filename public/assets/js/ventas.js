@@ -1,19 +1,19 @@
 import {
-    collection,
-    getDocs,
-    doc,
-    getDoc,
-    deleteDoc,
-    addDoc,
-    updateDoc,
-    setDoc,
-    serverTimestamp,
-    query,
-    where,
-    orderBy,
-    limit,
-    startAfter,
-    Timestamp
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  deleteDoc,
+  addDoc,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
+  limit,
+  startAfter,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 import { auth, db } from "./firebase-config.js";
@@ -44,297 +44,297 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 // Filtros activos
 let filtrosVentas = {
-    cliente: '',
-    estado: '',
-    fechaInicio: '',
-    fechaFin: '',
-    convenio: '',
-    busqueda: ''
+  cliente: '',
+  estado: '',
+  fechaInicio: '',
+  fechaFin: '',
+  convenio: '',
+  busqueda: ''
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Página de ventas cargada');
+  console.log('Página de ventas cargada');
 
-    try {
-        // Verificar autenticación
-        await checkAndCreateInventoryCollection();
-        await checkAndCreateVentasCollection();
+  try {
+    // Verificar autenticación
+    await checkAndCreateInventoryCollection();
+    await checkAndCreateVentasCollection();
 
-        // Verificar si hay un cliente en la URL
-        checkClienteFromURL();
+    // Verificar si hay un cliente en la URL
+    checkClienteFromURL();
 
-        // Cargar datos necesarios en paralelo
-        await Promise.all([
-            loadClientes(),
-            loadProductos(),
-            loadArmazones(),
-            loadEmpresas(),
-            loadMiembrosConvenio() // Agregado para cargar miembros de convenio
-        ]);
+    // Cargar datos necesarios en paralelo
+    await Promise.all([
+      loadClientes(),
+      loadProductos(),
+      loadArmazones(),
+      loadEmpresas(),
+      loadMiembrosConvenio() // Agregado para cargar miembros de convenio
+    ]);
 
-        // Configurar eventos
-        setupModalEvents();
-        setupFormEvents();
-        setupSearchEvents();
-        setupFilterEvents();
-        setupPaginationEvents();
+    // Configurar eventos
+    setupModalEvents();
+    setupFormEvents();
+    setupSearchEvents();
+    setupFilterEvents();
+    setupPaginationEvents();
 
-        // Cargar datos iniciales de ventas
+    // Cargar datos iniciales de ventas
+    await loadVentas();
+
+    // Configurar actualización automática cada 30 segundos
+    setInterval(async () => {
+      if (Date.now() - lastCacheUpdate > CACHE_DURATION) {
         await loadVentas();
+      }
+    }, 30000);
 
-        // Configurar actualización automática cada 30 segundos
-        setInterval(async () => {
-            if (Date.now() - lastCacheUpdate > CACHE_DURATION) {
-                await loadVentas();
-            }
-        }, 30000);
-
-    } catch (error) {
-        console.error("Error al inicializar la página de ventas:", error);
-        showToast('Error al cargar la página de ventas', 'danger');
-    }
+  } catch (error) {
+    console.error("Error al inicializar la página de ventas:", error);
+    showToast('Error al cargar la página de ventas', 'danger');
+  }
 });
 
 // Función para verificar y crear colecciones necesarias para ventas
 async function checkAndCreateVentasCollection() {
-    try {
-        console.log("Verificando colecciones de ventas...");
+  try {
+    console.log("Verificando colecciones de ventas...");
 
-        // Verificar colecciones necesarias
-        const collections = ['ventas', 'abonos', 'pagos'];
+    // Verificar colecciones necesarias
+    const collections = ['ventas', 'abonos', 'pagos'];
 
-        for (const collectionName of collections) {
-            const snapshot = await getDocs(collection(db, collectionName));
-            if (snapshot.empty) {
-                console.log(`Creando colección de ${collectionName}...`);
-            }
-        }
-
-        // Crear métodos de pago iniciales si no existen
-        const metodosPagoSnapshot = await getDocs(collection(db, 'metodosPago'));
-        if (metodosPagoSnapshot.empty) {
-            const metodosPagoIniciales = [
-                { nombre: 'Efectivo', descripcion: 'Pago en efectivo' },
-                { nombre: 'Tarjeta de crédito', descripcion: 'Pago con tarjeta de crédito' },
-                { nombre: 'Tarjeta de débito', descripcion: 'Pago con tarjeta de débito' },
-                { nombre: 'Transferencia', descripcion: 'Pago por transferencia bancaria' },
-                { nombre: 'Crédito convenio', descripcion: 'Pago con crédito de convenio' } // Agregado método de pago para convenio
-            ];
-
-            for (const metodoPago of metodosPagoIniciales) {
-                await addDoc(collection(db, 'metodosPago'), {
-                    ...metodoPago,
-                    createdAt: serverTimestamp()
-                });
-            }
-        }
-
-        console.log("Verificación de colecciones de ventas completada");
-    } catch (error) {
-        console.error("Error al verificar o crear colecciones de ventas:", error);
-        throw error;
+    for (const collectionName of collections) {
+      const snapshot = await getDocs(collection(db, collectionName));
+      if (snapshot.empty) {
+        console.log(`Creando colección de ${collectionName}...`);
+      }
     }
+
+    // Crear métodos de pago iniciales si no existen
+    const metodosPagoSnapshot = await getDocs(collection(db, 'metodosPago'));
+    if (metodosPagoSnapshot.empty) {
+      const metodosPagoIniciales = [
+        { nombre: 'Efectivo', descripcion: 'Pago en efectivo' },
+        { nombre: 'Tarjeta de crédito', descripcion: 'Pago con tarjeta de crédito' },
+        { nombre: 'Tarjeta de débito', descripcion: 'Pago con tarjeta de débito' },
+        { nombre: 'Transferencia', descripcion: 'Pago por transferencia bancaria' },
+        { nombre: 'Crédito convenio', descripcion: 'Pago con crédito de convenio' } // Agregado método de pago para convenio
+      ];
+
+      for (const metodoPago of metodosPagoIniciales) {
+        await addDoc(collection(db, 'metodosPago'), {
+          ...metodoPago,
+          createdAt: serverTimestamp()
+        });
+      }
+    }
+
+    console.log("Verificación de colecciones de ventas completada");
+  } catch (error) {
+    console.error("Error al verificar o crear colecciones de ventas:", error);
+    throw error;
+  }
 }
 
 // Función para verificar si hay un cliente en la URL
 function checkClienteFromURL() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const clientId = urlParams.get('clientId');
+  const urlParams = new URLSearchParams(window.location.search);
+  const clientId = urlParams.get('clientId');
 
-    if (clientId) {
-        currentClientId = clientId;
-        console.log("Cliente seleccionado desde URL:", currentClientId);
+  if (clientId) {
+    currentClientId = clientId;
+    console.log("Cliente seleccionado desde URL:", currentClientId);
 
-        setTimeout(() => {
-            const addSaleBtn = document.getElementById('addSaleBtn');
-            if (addSaleBtn) {
-                addSaleBtn.click();
-            }
-        }, 500);
-    }
+    setTimeout(() => {
+      const addSaleBtn = document.getElementById('addSaleBtn');
+      if (addSaleBtn) {
+        addSaleBtn.click();
+      }
+    }, 500);
+  }
 }
 
 // Función para cargar clientes con cache
 async function loadClientes() {
-    try {
-        const clientesSnapshot = await getDocs(collection(db, 'clientes'));
-        clientes = [];
-        clientesCache.clear();
+  try {
+    const clientesSnapshot = await getDocs(collection(db, 'clientes'));
+    clientes = [];
+    clientesCache.clear();
 
-        clientesSnapshot.forEach(doc => {
-            const clienteData = {
-                id: doc.id,
-                ...doc.data()
-            };
-            clientes.push(clienteData);
-            clientesCache.set(doc.id, clienteData);
-        });
+    clientesSnapshot.forEach(doc => {
+      const clienteData = {
+        id: doc.id,
+        ...doc.data()
+      };
+      clientes.push(clienteData);
+      clientesCache.set(doc.id, clienteData);
+    });
 
-        console.log("Clientes cargados:", clientes.length);
-    } catch (error) {
-        console.error("Error al cargar clientes:", error);
-        showToast('Error al cargar clientes', 'danger');
-    }
+    console.log("Clientes cargados:", clientes.length);
+  } catch (error) {
+    console.error("Error al cargar clientes:", error);
+    showToast('Error al cargar clientes', 'danger');
+  }
 }
 
 // Función para cargar productos
 async function loadProductos() {
-    try {
-        const productosSnapshot = await getDocs(collection(db, 'productos'));
-        productos = [];
+  try {
+    const productosSnapshot = await getDocs(collection(db, 'productos'));
+    productos = [];
 
-        productosSnapshot.forEach(doc => {
-            if (doc.id !== 'placeholder' && !doc.data().isPlaceholder) {
-                productos.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            }
+    productosSnapshot.forEach(doc => {
+      if (doc.id !== 'placeholder' && !doc.data().isPlaceholder) {
+        productos.push({
+          id: doc.id,
+          ...doc.data()
         });
+      }
+    });
 
-        console.log("Productos cargados:", productos.length);
-    } catch (error) {
-        console.error("Error al cargar productos:", error);
-        showToast('Error al cargar productos', 'danger');
-    }
+    console.log("Productos cargados:", productos.length);
+  } catch (error) {
+    console.error("Error al cargar productos:", error);
+    showToast('Error al cargar productos', 'danger');
+  }
 }
 
 // Función para cargar armazones
 async function loadArmazones() {
-    try {
-        const armazonesSnapshot = await getDocs(collection(db, 'armazones'));
-        armazones = [];
+  try {
+    const armazonesSnapshot = await getDocs(collection(db, 'armazones'));
+    armazones = [];
 
-        armazonesSnapshot.forEach(doc => {
-            if (doc.id !== 'placeholder' && !doc.data().isPlaceholder) {
-                armazones.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            }
+    armazonesSnapshot.forEach(doc => {
+      if (doc.id !== 'placeholder' && !doc.data().isPlaceholder) {
+        armazones.push({
+          id: doc.id,
+          ...doc.data()
         });
+      }
+    });
 
-        console.log("Armazones cargados:", armazones.length);
-    } catch (error) {
-        console.error("Error al cargar armazones:", error);
-        showToast('Error al cargar armazones', 'danger');
-    }
+    console.log("Armazones cargados:", armazones.length);
+  } catch (error) {
+    console.error("Error al cargar armazones:", error);
+    showToast('Error al cargar armazones', 'danger');
+  }
 }
 
 // Función para cargar empresas
 async function loadEmpresas() {
-    try {
-        const empresasSnapshot = await getDocs(collection(db, 'empresas'));
-        empresas = [];
+  try {
+    const empresasSnapshot = await getDocs(collection(db, 'empresas'));
+    empresas = [];
 
-        empresasSnapshot.forEach(doc => {
-            empresas.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
+    empresasSnapshot.forEach(doc => {
+      empresas.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
 
-        console.log("Empresas cargadas:", empresas.length);
-    } catch (error) {
-        console.error("Error al cargar empresas:", error);
-        showToast('Error al cargar empresas', 'danger');
-    }
+    console.log("Empresas cargadas:", empresas.length);
+  } catch (error) {
+    console.error("Error al cargar empresas:", error);
+    showToast('Error al cargar empresas', 'danger');
+  }
 }
 
 // Función para cargar miembros de convenio - AGREGADA
 async function loadMiembrosConvenio() {
-    try {
-        const miembrosSnapshot = await getDocs(collection(db, 'miembrosConvenio'));
-        miembrosConvenio = [];
+  try {
+    const miembrosSnapshot = await getDocs(collection(db, 'miembrosConvenio'));
+    miembrosConvenio = [];
 
-        miembrosSnapshot.forEach(doc => {
-            miembrosConvenio.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
+    miembrosSnapshot.forEach(doc => {
+      miembrosConvenio.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
 
-        console.log("Miembros de convenio cargados:", miembrosConvenio.length);
-    } catch (error) {
-        console.error("Error al cargar miembros de convenio:", error);
-        showToast('Error al cargar miembros de convenio', 'danger');
-    }
+    console.log("Miembros de convenio cargados:", miembrosConvenio.length);
+  } catch (error) {
+    console.error("Error al cargar miembros de convenio:", error);
+    showToast('Error al cargar miembros de convenio', 'danger');
+  }
 }
 
 // Función corregida para calcular crédito usado - DEBE calcular el total gastado, no el saldo pendiente
 async function calcularCreditoUsadoCliente(clienteId) {
-    try {
-        const ventasQuery = query(
-            collection(db, 'ventas'),
-            where('clienteId', '==', clienteId),
-            where('convenio', '==', true),
-            where('estado', '!=', 'cancelada')
-        );
-        
-        const ventasSnapshot = await getDocs(ventasQuery);
-        let creditoUsado = 0;
+  try {
+    const ventasQuery = query(
+      collection(db, 'ventas'),
+      where('clienteId', '==', clienteId),
+      where('convenio', '==', true),
+      where('estado', '!=', 'cancelada')
+    );
 
-        // CORREGIDO: Sumar el total de cada venta, no el saldo pendiente
-        for (const ventaDoc of ventasSnapshot.docs) {
-            const venta = ventaDoc.data();
-            creditoUsado += venta.total || 0; // Usar el total de la venta
-        }
+    const ventasSnapshot = await getDocs(ventasQuery);
+    let creditoUsado = 0;
 
-        return creditoUsado;
-    } catch (error) {
-        console.error("Error al calcular crédito usado:", error);
-        return 0;
+    // CORREGIDO: Sumar el total de cada venta, no el saldo pendiente
+    for (const ventaDoc of ventasSnapshot.docs) {
+      const venta = ventaDoc.data();
+      creditoUsado += venta.total || 0; // Usar el total de la venta
     }
+
+    return creditoUsado;
+  } catch (error) {
+    console.error("Error al calcular crédito usado:", error);
+    return 0;
+  }
 }
 
 // Función para obtener información de crédito de un cliente con convenio - AGREGADA
 async function obtenerInfoCreditoCliente(clienteId) {
-    try {
-        const miembro = miembrosConvenio.find(m => m.clienteId === clienteId);
-        if (!miembro) {
-            return null;
-        }
-
-        const empresa = empresas.find(e => e.id === miembro.empresaId);
-        const creditoUsado = await calcularCreditoUsadoCliente(clienteId);
-        const limiteCredito = miembro.limiteCredito || 0;
-        const creditoDisponible = Math.max(0, limiteCredito - creditoUsado);
-
-        return {
-            miembro,
-            empresa,
-            limiteCredito,
-            creditoUsado,
-            creditoDisponible
-        };
-    } catch (error) {
-        console.error("Error al obtener información de crédito:", error);
-        return null;
+  try {
+    const miembro = miembrosConvenio.find(m => m.clienteId === clienteId);
+    if (!miembro) {
+      return null;
     }
+
+    const empresa = empresas.find(e => e.id === miembro.empresaId);
+    const creditoUsado = await calcularCreditoUsadoCliente(clienteId);
+    const limiteCredito = miembro.limiteCredito || 0;
+    const creditoDisponible = Math.max(0, limiteCredito - creditoUsado);
+
+    return {
+      miembro,
+      empresa,
+      limiteCredito,
+      creditoUsado,
+      creditoDisponible
+    };
+  } catch (error) {
+    console.error("Error al obtener información de crédito:", error);
+    return null;
+  }
 }
 
 // Función para mostrar notificaciones toast mejorada
 function showToast(message, type = 'info', duration = 5000) {
-    let toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toastContainer';
-        toastContainer.className = 'fixed top-4 right-4 z-50 max-w-xs space-y-2';
-        document.body.appendChild(toastContainer);
-    }
+  let toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toastContainer';
+    toastContainer.className = 'fixed top-4 right-4 z-50 max-w-xs space-y-2';
+    document.body.appendChild(toastContainer);
+  }
 
-    const toast = document.createElement('div');
-    const typeClasses = {
-        success: 'bg-green-500 border-green-600',
-        danger: 'bg-red-500 border-red-600',
-        warning: 'bg-yellow-500 border-yellow-600',
-        info: 'bg-blue-500 border-blue-600'
-    };
+  const toast = document.createElement('div');
+  const typeClasses = {
+    success: 'bg-green-500 border-green-600',
+    danger: 'bg-red-500 border-red-600',
+    warning: 'bg-yellow-500 border-yellow-600',
+    info: 'bg-blue-500 border-blue-600'
+  };
 
-    toast.className = `${typeClasses[type]} text-white px-4 py-3 rounded-lg shadow-lg border-l-4 transform transition-all duration-300 ease-in-out`;
-    toast.style.transform = 'translateX(100%)';
+  toast.className = `${typeClasses[type]} text-white px-4 py-3 rounded-lg shadow-lg border-l-4 transform transition-all duration-300 ease-in-out`;
+  toast.style.transform = 'translateX(100%)';
 
-    toast.innerHTML = `
+  toast.innerHTML = `
         <div class="flex items-center justify-between">
             <span class="text-sm font-medium">${message}</span>
             <button type="button" class="ml-3 text-white hover:text-gray-200 transition-colors">
@@ -345,50 +345,50 @@ function showToast(message, type = 'info', duration = 5000) {
         </div>
     `;
 
-    toastContainer.appendChild(toast);
+  toastContainer.appendChild(toast);
 
-    // Animar entrada
-    setTimeout(() => {
-        toast.style.transform = 'translateX(0)';
-    }, 10);
+  // Animar entrada
+  setTimeout(() => {
+    toast.style.transform = 'translateX(0)';
+  }, 10);
 
-    // Configurar botón de cerrar
-    const closeBtn = toast.querySelector('button');
-    closeBtn.addEventListener('click', () => {
-        removeToast(toast);
-    });
+  // Configurar botón de cerrar
+  const closeBtn = toast.querySelector('button');
+  closeBtn.addEventListener('click', () => {
+    removeToast(toast);
+  });
 
-    // Auto-cerrar
-    setTimeout(() => {
-        removeToast(toast);
-    }, duration);
+  // Auto-cerrar
+  setTimeout(() => {
+    removeToast(toast);
+  }, duration);
 }
 
 function removeToast(toast) {
-    toast.style.transform = 'translateX(100%)';
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-        }
-    }, 300);
+  toast.style.transform = 'translateX(100%)';
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.parentNode.removeChild(toast);
+    }
+  }, 300);
 }
 
 // Función para mostrar alertas personalizadas
 function showCustomAlert(title, message, type = 'info', confirmCallback = null) {
-    const alertContainer = document.getElementById('customAlertContainer');
+  const alertContainer = document.getElementById('customAlertContainer');
 
-    const alertModal = document.createElement('div');
-    alertModal.className = 'modal custom-alert-modal';
-    alertModal.style.display = 'block';
+  const alertModal = document.createElement('div');
+  alertModal.className = 'modal custom-alert-modal';
+  alertModal.style.display = 'block';
 
-    const typeIcons = {
-        success: '<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>',
-        danger: '<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
-        warning: '<svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
-        info: '<svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
-    };
+  const typeIcons = {
+    success: '<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>',
+    danger: '<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
+    warning: '<svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>',
+    info: '<svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+  };
 
-    alertModal.innerHTML = `
+  alertModal.innerHTML = `
         <div class="custom-alert-content">
             <div class="p-6">
                 <div class="flex items-center mb-4">
@@ -416,367 +416,382 @@ function showCustomAlert(title, message, type = 'info', confirmCallback = null) 
         </div>
     `;
 
-    alertContainer.appendChild(alertModal);
+  alertContainer.appendChild(alertModal);
 
-    // Configurar eventos
-    const cancelBtn = alertModal.querySelector('.cancel-btn');
-    const confirmBtn = alertModal.querySelector('.confirm-btn');
-    const okBtn = alertModal.querySelector('.ok-btn');
+  // Configurar eventos
+  const cancelBtn = alertModal.querySelector('.cancel-btn');
+  const confirmBtn = alertModal.querySelector('.confirm-btn');
+  const okBtn = alertModal.querySelector('.ok-btn');
 
-    const closeAlert = () => {
-        alertModal.style.display = 'none';
-        setTimeout(() => {
-            if (alertContainer.contains(alertModal)) {
-                alertContainer.removeChild(alertModal);
-            }
-        }, 300);
-    };
+  const closeAlert = () => {
+    alertModal.style.display = 'none';
+    setTimeout(() => {
+      if (alertContainer.contains(alertModal)) {
+        alertContainer.removeChild(alertModal);
+      }
+    }, 300);
+  };
 
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', closeAlert);
-    }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeAlert);
+  }
 
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', () => {
-            closeAlert();
-            if (confirmCallback) confirmCallback();
-        });
-    }
-
-    if (okBtn) {
-        okBtn.addEventListener('click', closeAlert);
-    }
-
-    // Cerrar al hacer clic fuera
-    alertModal.addEventListener('click', (e) => {
-        if (e.target === alertModal) {
-            closeAlert();
-        }
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', () => {
+      closeAlert();
+      if (confirmCallback) confirmCallback();
     });
+  }
+
+  if (okBtn) {
+    okBtn.addEventListener('click', closeAlert);
+  }
+
+  // Cerrar al hacer clic fuera
+  alertModal.addEventListener('click', (e) => {
+    if (e.target === alertModal) {
+      closeAlert();
+    }
+  });
 }
 
 // Configurar eventos para los modales
 function setupModalEvents() {
-    const addSaleBtn = document.getElementById('addSaleBtn');
-    if (addSaleBtn) {
-        addSaleBtn.addEventListener('click', () => {
-            openSaleModal();
-        });
-    }
-
-    // Configurar botones para cerrar modales
-    const closeButtons = document.querySelectorAll('.close, .close-modal');
-    closeButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.style.display = 'none';
-            });
-        });
+  const addSaleBtn = document.getElementById('addSaleBtn');
+  if (addSaleBtn) {
+    addSaleBtn.addEventListener('click', () => {
+      openSaleModal();
     });
+  }
 
-    // Cerrar modal al hacer clic fuera del contenido
-    window.addEventListener('click', (event) => {
-        document.querySelectorAll('.modal').forEach(modal => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
+  // Configurar botones para cerrar modales
+  const closeButtons = document.querySelectorAll('.close, .close-modal');
+  closeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+      });
     });
+  });
 
-    // Configurar botón para agregar producto
-    const addProductoBtn = document.getElementById('addProductoBtn');
-    if (addProductoBtn) {
-        addProductoBtn.addEventListener('click', () => {
-            addProductoItem();
-        });
-    }
+  // Cerrar modal al hacer clic fuera del contenido
+  window.addEventListener('click', (event) => {
+    document.querySelectorAll('.modal').forEach(modal => {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
+
+  // Configurar botón para agregar producto
+  const addProductoBtn = document.getElementById('addProductoBtn');
+  if (addProductoBtn) {
+    addProductoBtn.addEventListener('click', () => {
+      addProductoItem();
+    });
+  }
 }
 
 // Función para abrir el modal de venta
 function openSaleModal() {
-    const modal = document.getElementById('saleModal');
-    if (modal) {
-        modal.style.display = 'block';
-        document.getElementById('modalTitle').textContent = 'Registrar Nueva Venta';
+  const modal = document.getElementById('saleModal');
+  if (modal) {
+    modal.style.display = 'block';
+    document.getElementById('modalTitle').textContent = 'Registrar Nueva Venta';
 
-        // Limpiar formulario
-        document.getElementById('saleForm').reset();
-        document.getElementById('saleId').value = '';
+    // Limpiar formulario
+    document.getElementById('saleForm').reset();
+    document.getElementById('saleId').value = '';
 
-        // Establecer fecha actual
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        document.getElementById('fechaVenta').value = `${year}-${month}-${day}`;
+    // Establecer fecha actual
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    document.getElementById('fechaVenta').value = `${year}-${month}-${day}`;
 
-        // Limpiar contenedor de productos
-        const productosContainer = document.getElementById('productosContainer');
-        if (productosContainer) {
-            productosContainer.innerHTML = '';
-            addProductoItem();
-        }
-
-        // Configurar selector de cliente
-        setupClientSelector();
-
-        // Ocultar información de convenio
-        const convenioInfo = document.getElementById('convenioInfo');
-        if (convenioInfo) {
-            convenioInfo.style.display = 'none';
-        }
-
-        // Si hay un cliente preseleccionado desde la URL
-        if (currentClientId) {
-            const cliente = clientes.find(c => c.id === currentClientId);
-            if (cliente) {
-                document.getElementById('clienteSelector').value = cliente.nombre;
-                document.getElementById('clienteId').value = cliente.id;
-                updateConvenioInfo(cliente);
-            }
-        }
+    // Limpiar contenedor de productos
+    const productosContainer = document.getElementById('productosContainer');
+    if (productosContainer) {
+      productosContainer.innerHTML = '';
+      addProductoItem();
     }
+
+    // Configurar selector de cliente
+    setupClientSelector();
+
+    // Ocultar información de convenio
+    const convenioInfo = document.getElementById('convenioInfo');
+    if (convenioInfo) {
+      convenioInfo.style.display = 'none';
+    }
+
+    // Si hay un cliente preseleccionado desde la URL
+    if (currentClientId) {
+      const cliente = clientes.find(c => c.id === currentClientId);
+      if (cliente) {
+        document.getElementById('clienteSelector').value = cliente.nombre;
+        document.getElementById('clienteId').value = cliente.id;
+        updateConvenioInfo(cliente);
+      }
+    }
+  }
 }
 
 // Configurar selector de cliente mejorado
 function setupClientSelector() {
-    const clienteSelector = document.getElementById('clienteSelector');
-    const clienteDropdown = document.getElementById('clienteDropdown');
-    const clienteIdInput = document.getElementById('clienteId');
+  const clienteSelector = document.getElementById('clienteSelector');
+  const clienteDropdown = document.getElementById('clienteDropdown');
+  const clienteIdInput = document.getElementById('clienteId');
 
-    if (!clienteSelector || !clienteDropdown || !clienteIdInput) return;
+  if (!clienteSelector || !clienteDropdown || !clienteIdInput) return;
 
-    // Limpiar valores
-    clienteSelector.value = '';
-    clienteIdInput.value = '';
+  // Limpiar valores
+  clienteSelector.value = '';
+  clienteIdInput.value = '';
 
-    function renderDropdown(searchTerm = '') {
-        const term = searchTerm.toLowerCase();
-        const options = [{
-            id: '',
-            nombre: 'Venta de mostrador',
-            isShowroom: true
-        }];
-        const filteredClientes = clientes.filter(cliente =>
-            cliente.nombre.toLowerCase().includes(term) ||
-            cliente.telefono?.includes(term) ||
-            cliente.email?.toLowerCase().includes(term)
-        );
-        options.push(...filteredClientes);
+  function renderDropdown(searchTerm = '') {
+    const term = searchTerm.toLowerCase();
+    const options = [{
+      id: '',
+      nombre: 'Venta de mostrador',
+      isShowroom: true
+    }];
+    const filteredClientes = clientes.filter(cliente =>
+      cliente.nombre.toLowerCase().includes(term) ||
+      cliente.telefono?.includes(term) ||
+      cliente.email?.toLowerCase().includes(term)
+    );
+    options.push(...filteredClientes);
 
-        if (options.length > 0) {
-            clienteDropdown.innerHTML = '';
-            options.forEach(option => {
-                const optionElement = document.createElement('div');
-                optionElement.className = 'client-option';
-                optionElement.innerHTML = `
+    if (options.length > 0) {
+      clienteDropdown.innerHTML = '';
+      options.forEach(option => {
+        const optionElement = document.createElement('div');
+        optionElement.className = 'client-option';
+        optionElement.innerHTML = `
                     <div class="font-medium">${option.nombre}</div>
                     ${!option.isShowroom ? `<div class="text-sm text-gray-500">${option.telefono || ''} ${option.email || ''}</div>` : ''}
                 `;
-                optionElement.addEventListener('click', async () => { // Modificado para ser async
-                    clienteSelector.value = option.nombre;
-                    clienteIdInput.value = option.id;
-                    clienteDropdown.style.display = 'none';
-                    if (option.isShowroom) {
-                        hideConvenioInfo();
-                    } else {
-                        await updateConvenioInfo(option); // Modificado para usar await
-                    }
-                    updateAbonoVisibility();
-                });
-                clienteDropdown.appendChild(optionElement);
-            });
-            clienteDropdown.style.display = 'block';
-        } else {
-            clienteDropdown.style.display = 'none';
-        }
+        optionElement.addEventListener('click', async () => { // Modificado para ser async
+          clienteSelector.value = option.nombre;
+          clienteIdInput.value = option.id;
+          clienteDropdown.style.display = 'none';
+          if (option.isShowroom) {
+            hideConvenioInfo();
+          } else {
+            await updateConvenioInfo(option); // Modificado para usar await
+          }
+          updateAbonoVisibility();
+        });
+        clienteDropdown.appendChild(optionElement);
+      });
+      clienteDropdown.style.display = 'block';
+    } else {
+      clienteDropdown.style.display = 'none';
     }
+  }
 
-    // Configurar eventos
-    clienteSelector.addEventListener('input', (e) => {
-        renderDropdown(e.target.value);
-    });
+  // Configurar eventos
+  clienteSelector.addEventListener('input', (e) => {
+    renderDropdown(e.target.value);
+  });
 
-    // Mostrar dropdown al enfocar el input
-    clienteSelector.addEventListener('focus', (e) => {
-        renderDropdown(e.target.value);
-    });
+  // Mostrar dropdown al enfocar el input
+  clienteSelector.addEventListener('focus', (e) => {
+    renderDropdown(e.target.value);
+  });
 
-    // Ocultar dropdown al hacer clic fuera
-    document.addEventListener('mousedown', (e) => {
-        if (!clienteSelector.contains(e.target) && !clienteDropdown.contains(e.target)) {
-            clienteDropdown.style.display = 'none';
-        }
-    });
+  // Ocultar dropdown al hacer clic fuera
+  document.addEventListener('mousedown', (e) => {
+    if (!clienteSelector.contains(e.target) && !clienteDropdown.contains(e.target)) {
+      clienteDropdown.style.display = 'none';
+    }
+  });
 
-    // Manejar teclas
-    clienteSelector.addEventListener('keydown', (e) => {
-        const options = clienteDropdown.querySelectorAll('.client-option');
-        let selectedIndex = Array.from(options).findIndex(option => option.classList.contains('selected'));
+  // Manejar teclas
+  clienteSelector.addEventListener('keydown', (e) => {
+    const options = clienteDropdown.querySelectorAll('.client-option');
+    let selectedIndex = Array.from(options).findIndex(option => option.classList.contains('selected'));
 
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (selectedIndex < options.length - 1) {
-                if (selectedIndex >= 0) options[selectedIndex].classList.remove('selected');
-                options[selectedIndex + 1].classList.add('selected');
-            }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (selectedIndex > 0) {
-                options[selectedIndex].classList.remove('selected');
-                options[selectedIndex - 1].classList.add('selected');
-            }
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (selectedIndex >= 0) {
-                options[selectedIndex].click();
-            }
-        } else if (e.key === 'Escape') {
-            clienteDropdown.style.display = 'none';
-        }
-    });
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (selectedIndex < options.length - 1) {
+        if (selectedIndex >= 0) options[selectedIndex].classList.remove('selected');
+        options[selectedIndex + 1].classList.add('selected');
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (selectedIndex > 0) {
+        options[selectedIndex].classList.remove('selected');
+        options[selectedIndex - 1].classList.add('selected');
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0) {
+        options[selectedIndex].click();
+      }
+    } else if (e.key === 'Escape') {
+      clienteDropdown.style.display = 'none';
+    }
+  });
 }
 
 // Función corregida para actualizar información de convenio - MODIFICADA para incluir información de crédito
 async function updateConvenioInfo(cliente) {
-    const convenioInfo = document.getElementById('convenioInfo');
-    const empresaConvenio = document.getElementById('empresaConvenio');
-    const sucursalConvenio = document.getElementById('sucursalConvenio');
-    const descuentoConvenio = document.getElementById('descuentoConvenio');
+  const convenioInfo = document.getElementById('convenioInfo');
+  const empresaConvenio = document.getElementById('empresaConvenio');
+  const sucursalConvenio = document.getElementById('sucursalConvenio');
+  const descuentoConvenio = document.getElementById('descuentoConvenio');
 
-    if (!convenioInfo) return;
+  if (!convenioInfo) return;
 
-    if (cliente.convenio && cliente.empresaId) {
-        const creditoInfo = await obtenerInfoCreditoCliente(cliente.id);
-        
-        if (creditoInfo && creditoInfo.empresa) {
-            empresaConvenio.textContent = creditoInfo.empresa.nombre;
-            sucursalConvenio.textContent = creditoInfo.miembro.sucursal || 'No especificada';
-            descuentoConvenio.textContent = creditoInfo.empresa.descuento || 0;
-            
-            // Actualizar información de crédito
-            document.getElementById('creditoLimite').textContent = `$${creditoInfo.limiteCredito.toFixed(2)}`;
-            document.getElementById('creditoUsado').textContent = `$${creditoInfo.creditoUsado.toFixed(2)}`;
-            document.getElementById('creditoDisponible').textContent = `$${creditoInfo.creditoDisponible.toFixed(2)}`;
-            
-            // Actualizar barra de progreso
-            const porcentajeUso = creditoInfo.limiteCredito > 0 ? (creditoInfo.creditoUsado / creditoInfo.limiteCredito) * 100 : 0;
-            document.getElementById('creditoPercentage').textContent = `${porcentajeUso.toFixed(1)}%`;
-            document.getElementById('creditoProgressBar').style.width = `${Math.min(porcentajeUso, 100)}%`;
-            
-            // Mostrar alerta si está cerca del límite
-            const creditoAlert = document.getElementById('creditoAlert');
-            const creditoAlertMessage = document.getElementById('creditoAlertMessage');
-            
-            if (porcentajeUso >= 90) {
-                creditoAlert.classList.remove('hidden');
-                creditoAlertMessage.textContent = porcentajeUso >= 100 
-                    ? 'El cliente ha excedido su límite de crédito'
-                    : 'El cliente está cerca de su límite de crédito';
-            } else {
-                creditoAlert.classList.add('hidden');
-            }
-            
-            convenioInfo.style.display = 'block';
+  if (cliente.convenio && cliente.empresaId) {
+    const creditoInfo = await obtenerInfoCreditoCliente(cliente.id);
 
-            // Aplicar descuento automáticamente a productos existentes
-            applyConvenioDiscountToProducts(creditoInfo.empresa.descuento || 0);
-        }
-    } else {
-        hideConvenioInfo();
+    if (creditoInfo && creditoInfo.empresa) {
+      empresaConvenio.textContent = creditoInfo.empresa.nombre;
+      sucursalConvenio.textContent = creditoInfo.miembro.sucursal || 'No especificada';
+      descuentoConvenio.textContent = creditoInfo.empresa.descuento || 0;
+
+      // Actualizar información de crédito
+      document.getElementById('creditoLimite').textContent = `$${creditoInfo.limiteCredito.toFixed(2)}`;
+      document.getElementById('creditoUsado').textContent = `$${creditoInfo.creditoUsado.toFixed(2)}`;
+      document.getElementById('creditoDisponible').textContent = `$${creditoInfo.creditoDisponible.toFixed(2)}`;
+
+      // Actualizar barra de progreso
+      const porcentajeUso = creditoInfo.limiteCredito > 0 ? (creditoInfo.creditoUsado / creditoInfo.limiteCredito) * 100 : 0;
+      document.getElementById('creditoPercentage').textContent = `${porcentajeUso.toFixed(1)}%`;
+      document.getElementById('creditoProgressBar').style.width = `${Math.min(porcentajeUso, 100)}%`;
+      setCreditoProgressBarColor(porcentajeUso);
+
+      // Mostrar alerta si está cerca del límite
+      const creditoAlert = document.getElementById('creditoAlert');
+      const creditoAlertMessage = document.getElementById('creditoAlertMessage');
+
+      if (porcentajeUso >= 90) {
+        creditoAlert.classList.remove('hidden');
+        creditoAlertMessage.textContent = porcentajeUso >= 100
+          ? 'El cliente ha excedido su límite de crédito'
+          : 'El cliente está cerca de su límite de crédito';
+      } else {
+        creditoAlert.classList.add('hidden');
+      }
+
+      convenioInfo.style.display = 'block';
+
+      // Aplicar descuento automáticamente a productos existentes
+      applyConvenioDiscountToProducts(creditoInfo.empresa.descuento || 0);
     }
-    
-    // AGREGADO: Actualizar visibilidad del abono después de procesar convenio
-    updateAbonoVisibility();
+  } else {
+    hideConvenioInfo();
+  }
+
+  // AGREGADO: Actualizar visibilidad del abono después de procesar convenio
+  updateAbonoVisibility();
+}
+
+// Actualizar barra de progreso de credito
+function setCreditoProgressBarColor(porcentajeUso) {
+  const progressBar = document.getElementById('creditoProgressBar');
+  if (!progressBar) return;
+
+  if (porcentajeUso < 40) {
+    progressBar.style.background = '#10b981'; // Verde
+  } else if (porcentajeUso < 70) {
+    progressBar.style.background = '#f59e0b'; // Amarillo
+  } else {
+    progressBar.style.background = '#dc2626'; // Rojo
+  }
 }
 
 // Ocultar información de convenio
 function hideConvenioInfo() {
-    const convenioInfo = document.getElementById('convenioInfo');
-    if (convenioInfo) {
-        convenioInfo.style.display = 'none';
-    }
+  const convenioInfo = document.getElementById('convenioInfo');
+  if (convenioInfo) {
+    convenioInfo.style.display = 'none';
+  }
 
-    // Remover descuentos automáticos y mensajes SIEMPRE
-    const productosItems = document.querySelectorAll('.producto-item');
-    productosItems.forEach((item, index) => {
-        const descuentoInput = document.getElementById(`descuento_${index}`);
-        const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
-        if (descuentoInput) {
-            descuentoInput.value = 0;
-            delete descuentoInput.dataset.manuallySet;
-            descuentoInput.dispatchEvent(new Event('input'));
-        }
-        if (descuentoMsg) {
-            descuentoMsg.textContent = '';
-            descuentoMsg.style.display = 'none';
-        }
-    });
+  // Remover descuentos automáticos y mensajes SIEMPRE
+  const productosItems = document.querySelectorAll('.producto-item');
+  productosItems.forEach((item, index) => {
+    const descuentoInput = document.getElementById(`descuento_${index}`);
+    const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
+    if (descuentoInput) {
+      descuentoInput.value = 0;
+      delete descuentoInput.dataset.manuallySet;
+      descuentoInput.dispatchEvent(new Event('input'));
+    }
+    if (descuentoMsg) {
+      descuentoMsg.textContent = '';
+      descuentoMsg.style.display = 'none';
+    }
+  });
 }
 
 // Aplicar descuento de convenio a productos
 function applyConvenioDiscountToProducts(descuentoPorcentaje) {
-    const productosItems = document.querySelectorAll('.producto-item');
+  const productosItems = document.querySelectorAll('.producto-item');
 
-    productosItems.forEach((item, index) => {
-        const descuentoInput = document.getElementById(`descuento_${index}`);
-        const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
-        if (descuentoInput && !descuentoInput.dataset.manuallySet) {
-            descuentoInput.value = descuentoPorcentaje;
-            descuentoInput.dispatchEvent(new Event('input'));
-            if (descuentoPorcentaje > 0 && descuentoMsg) {
-                descuentoMsg.textContent = `Descuento de convenio aplicado: ${descuentoPorcentaje}%`;
-                descuentoMsg.style.display = 'block';
-            } else if (descuentoMsg) {
-                descuentoMsg.textContent = '';
-                descuentoMsg.style.display = 'none';
-            }
-        }
-    });
+  productosItems.forEach((item, index) => {
+    const descuentoInput = document.getElementById(`descuento_${index}`);
+    const descuentoMsg = document.getElementById(`descuentoMsg_${index}`);
+    if (descuentoInput && !descuentoInput.dataset.manuallySet) {
+      descuentoInput.value = descuentoPorcentaje;
+      descuentoInput.dispatchEvent(new Event('input'));
+      if (descuentoPorcentaje > 0 && descuentoMsg) {
+        descuentoMsg.textContent = `Descuento de convenio aplicado: ${descuentoPorcentaje}%`;
+        descuentoMsg.style.display = 'block';
+      } else if (descuentoMsg) {
+        descuentoMsg.textContent = '';
+        descuentoMsg.style.display = 'none';
+      }
+    }
+  });
 }
 
 // Función corregida para actualizar visibilidad del campo abono
 function updateAbonoVisibility() {
-    const clienteId = document.getElementById('clienteId').value;
-    const abonoGroup = document.getElementById('abonoGroup');
-    const labelAbonoGroup = document.querySelector('label[for="abono"]');
-    const abonoInput = document.getElementById('abono');
+  const clienteId = document.getElementById('clienteId').value;
+  const abonoGroup = document.getElementById('abonoGroup');
+  const labelAbonoGroup = document.querySelector('label[for="abono"]');
+  const abonoInput = document.getElementById('abono');
 
-    if (abonoGroup && abonoInput) {
-        if (clienteId) {
-            // Cliente seleccionado - verificar si tiene convenio
-            const cliente = clientes.find(c => c.id === clienteId);
-            
-            if (cliente && cliente.convenio) {
-                // Cliente CON convenio - OCULTAR abono (se paga con crédito)
-                abonoGroup.style.display = 'none';
-                abonoInput.value = '0';
-            } else {
-                // Cliente SIN convenio - MOSTRAR abono
-                labelAbonoGroup.textContent = 'Abono inicial';
-                abonoGroup.style.display = 'block';
-                abonoInput.value = '0';
-            }
-        } else {
-            // Venta de mostrador - MOSTRAR abono (debe ser pago completo)
-            abonoGroup.style.display = 'block';
-            labelAbonoGroup.textContent = 'Pago total';
-            const total = document.getElementById('total').value;
-            abonoInput.value = total || '0';
-        }
+  if (abonoGroup && abonoInput) {
+    if (clienteId) {
+      // Cliente seleccionado - verificar si tiene convenio
+      const cliente = clientes.find(c => c.id === clienteId);
+
+      if (cliente && cliente.convenio) {
+        // Cliente CON convenio - OCULTAR abono (se paga con crédito)
+        abonoGroup.style.display = 'none';
+        abonoInput.value = '0';
+      } else {
+        // Cliente SIN convenio - MOSTRAR abono
+        labelAbonoGroup.textContent = 'Abono inicial';
+        abonoGroup.style.display = 'block';
+        abonoInput.value = '0';
+      }
+    } else {
+      // Venta de mostrador - MOSTRAR abono (debe ser pago completo)
+      abonoGroup.style.display = 'block';
+      labelAbonoGroup.textContent = 'Pago total';
+      const total = document.getElementById('total').value;
+      abonoInput.value = total || '0';
     }
+  }
 }
 
 // Función para agregar un elemento de producto al formulario
 function addProductoItem() {
-    const productosContainer = document.getElementById('productosContainer');
-    if (!productosContainer) return;
+  const productosContainer = document.getElementById('productosContainer');
+  if (!productosContainer) return;
 
-    const productoIndex = document.querySelectorAll('.producto-item').length;
+  const productoIndex = document.querySelectorAll('.producto-item').length;
 
-    const productoItem = document.createElement('div');
-    productoItem.className = 'producto-item';
-    productoItem.innerHTML = `
+  const productoItem = document.createElement('div');
+  productoItem.className = 'producto-item';
+  productoItem.innerHTML = `
         <div class="flex justify-between items-center mb-3">
             <h4 class="font-semibold text-lg">Producto ${productoIndex + 1}</h4>
             ${productoIndex > 0 ? `
@@ -837,753 +852,753 @@ function addProductoItem() {
         </div>
     `;
 
-    productosContainer.appendChild(productoItem);
-    setupProductoEvents(productoIndex);
+  productosContainer.appendChild(productoItem);
+  setupProductoEvents(productoIndex);
 }
 
 // Configurar eventos para un producto
 function setupProductoEvents(index) {
-    const removeBtn = document.querySelector(`.producto-item:nth-child(${index + 1}) .remove-producto`);
-    if (removeBtn) {
-        removeBtn.addEventListener('click', function () {
-            this.closest('.producto-item').remove();
-            document.querySelectorAll('.producto-item').forEach((item, i) => {
-                item.querySelector('h4').textContent = `Producto ${i + 1}`;
-            });
-            calcularTotal();
+  const removeBtn = document.querySelector(`.producto-item:nth-child(${index + 1}) .remove-producto`);
+  if (removeBtn) {
+    removeBtn.addEventListener('click', function () {
+      this.closest('.producto-item').remove();
+      document.querySelectorAll('.producto-item').forEach((item, i) => {
+        item.querySelector('h4').textContent = `Producto ${i + 1}`;
+      });
+      calcularTotal();
+    });
+  }
+
+  const decreaseBtn = document.querySelector(`.decrease-btn[data-index="${index}"]`);
+  const increaseBtn = document.querySelector(`.increase-btn[data-index="${index}"]`);
+  const cantidadInput = document.getElementById(`cantidad_${index}`);
+
+  if (decreaseBtn && cantidadInput) {
+    decreaseBtn.addEventListener('click', () => {
+      const tipoProducto = document.getElementById(`tipoProducto_${index}`);
+      const productoSelect = document.getElementById(`producto_${index}`);
+      if (!tipoProducto.value || !productoSelect.value) {
+        showToast('Primero selecciona el tipo y producto', 'warning');
+        return;
+      }
+      const currentValue = parseInt(cantidadInput.value) || 1;
+      if (currentValue > 1) {
+        cantidadInput.value = currentValue - 1;
+        cantidadInput.dispatchEvent(new Event('input'));
+      }
+    });
+  }
+
+  if (increaseBtn && cantidadInput) {
+    increaseBtn.addEventListener('click', () => {
+      const tipoProducto = document.getElementById(`tipoProducto_${index}`);
+      const productoSelect = document.getElementById(`producto_${index}`);
+      if (!tipoProducto.value || !productoSelect.value) {
+        showToast('Primero selecciona el tipo y producto', 'warning');
+        return;
+      }
+      const currentValue = parseInt(cantidadInput.value) || 1;
+      const maxStock = parseInt(cantidadInput.dataset.stock) || 999;
+      if (currentValue < maxStock) {
+        cantidadInput.value = currentValue + 1;
+        cantidadInput.dispatchEvent(new Event('input'));
+      }
+    });
+  }
+
+  const tipoProducto = document.getElementById(`tipoProducto_${index}`);
+  const productoSelect = document.getElementById(`producto_${index}`);
+
+  if (tipoProducto && productoSelect) {
+    tipoProducto.addEventListener('change', () => {
+      const tipo = tipoProducto.value;
+      productoSelect.disabled = !tipo;
+      productoSelect.innerHTML = '<option value="">Seleccione producto</option>';
+
+      if (tipo === 'producto') {
+        productos.forEach(producto => {
+          if (producto.stock > 0) {
+            const option = document.createElement('option');
+            option.value = producto.id;
+            option.textContent = `${producto.nombre} (Stock: ${producto.stock})`;
+            option.dataset.precio = producto.precioVenta || 0;
+            option.dataset.stock = producto.stock || 0;
+            productoSelect.appendChild(option);
+          }
         });
-    }
-
-    const decreaseBtn = document.querySelector(`.decrease-btn[data-index="${index}"]`);
-    const increaseBtn = document.querySelector(`.increase-btn[data-index="${index}"]`);
-    const cantidadInput = document.getElementById(`cantidad_${index}`);
-
-    if (decreaseBtn && cantidadInput) {
-        decreaseBtn.addEventListener('click', () => {
-            const tipoProducto = document.getElementById(`tipoProducto_${index}`);
-            const productoSelect = document.getElementById(`producto_${index}`);
-            if (!tipoProducto.value || !productoSelect.value) {
-                showToast('Primero selecciona el tipo y producto', 'warning');
-                return;
-            }
-            const currentValue = parseInt(cantidadInput.value) || 1;
-            if (currentValue > 1) {
-                cantidadInput.value = currentValue - 1;
-                cantidadInput.dispatchEvent(new Event('input'));
-            }
+      } else if (tipo === 'armazon') {
+        armazones.forEach(armazon => {
+          if (armazon.stock > 0) {
+            const option = document.createElement('option');
+            option.value = armazon.id;
+            option.textContent = `${armazon.marca} - ${armazon.modelo} (Stock: ${armazon.stock})`;
+            option.dataset.precio = armazon.precioVenta || 0;
+            option.dataset.stock = armazon.stock || 0;
+            productoSelect.appendChild(option);
+          }
         });
-    }
+      }
+    });
 
-    if (increaseBtn && cantidadInput) {
-        increaseBtn.addEventListener('click', () => {
-            const tipoProducto = document.getElementById(`tipoProducto_${index}`);
-            const productoSelect = document.getElementById(`producto_${index}`);
-            if (!tipoProducto.value || !productoSelect.value) {
-                showToast('Primero selecciona el tipo y producto', 'warning');
-                return;
+    productoSelect.addEventListener('change', async () => { // Modificado para ser async
+      const selectedOption = productoSelect.options[productoSelect.selectedIndex];
+      const precio = parseFloat(selectedOption.dataset.precio) || 0;
+      const stock = parseInt(selectedOption.dataset.stock) || 0;
+
+      const precioInput = document.getElementById(`precio_${index}`);
+      if (precioInput) {
+        precioInput.value = precio.toFixed(2);
+        precioInput.dataset.original = precio;
+      }
+
+      if (cantidadInput) {
+        cantidadInput.max = stock;
+        cantidadInput.dataset.stock = stock;
+        cantidadInput.value = 1;
+
+        if (decreaseBtn) {
+          decreaseBtn.disabled = cantidadInput.value <= 1;
+        }
+        if (increaseBtn) {
+          increaseBtn.disabled = cantidadInput.value >= stock;
+        }
+
+        const stockInfo = document.getElementById(`stockInfo_${index}`);
+        if (stockInfo) {
+          stockInfo.textContent = `Stock disponible: ${stock}`;
+          stockInfo.style.display = 'block';
+        }
+      }
+
+      // Modificado para usar información de crédito
+      const clienteId = document.getElementById('clienteId').value;
+      if (clienteId) {
+        const cliente = clientes.find(c => c.id === clienteId);
+        if (cliente && cliente.convenio && cliente.empresaId) {
+          const creditoInfo = await obtenerInfoCreditoCliente(clienteId);
+          if (creditoInfo && creditoInfo.empresa && creditoInfo.empresa.descuento) {
+            const descuentoInput = document.getElementById(`descuento_${index}`);
+            if (descuentoInput && !descuentoInput.dataset.manuallySet) {
+              descuentoInput.value = creditoInfo.empresa.descuento;
+              descuentoInput.dispatchEvent(new Event('input'));
             }
-            const currentValue = parseInt(cantidadInput.value) || 1;
-            const maxStock = parseInt(cantidadInput.dataset.stock) || 999;
-            if (currentValue < maxStock) {
-                cantidadInput.value = currentValue + 1;
-                cantidadInput.dispatchEvent(new Event('input'));
-            }
-        });
-    }
+          }
+        }
+      }
 
-    const tipoProducto = document.getElementById(`tipoProducto_${index}`);
-    const productoSelect = document.getElementById(`producto_${index}`);
+      calcularSubtotal(index);
+    });
+  }
 
-    if (tipoProducto && productoSelect) {
-        tipoProducto.addEventListener('change', () => {
-            const tipo = tipoProducto.value;
-            productoSelect.disabled = !tipo;
-            productoSelect.innerHTML = '<option value="">Seleccione producto</option>';
+  const precioInput = document.getElementById(`precio_${index}`);
+  const subtotalInput = document.getElementById(`subtotal_${index}`);
+  const descuentoInput = document.getElementById(`descuento_${index}`);
 
-            if (tipo === 'producto') {
-                productos.forEach(producto => {
-                    if (producto.stock > 0) {
-                        const option = document.createElement('option');
-                        option.value = producto.id;
-                        option.textContent = `${producto.nombre} (Stock: ${producto.stock})`;
-                        option.dataset.precio = producto.precioVenta || 0;
-                        option.dataset.stock = producto.stock || 0;
-                        productoSelect.appendChild(option);
-                    }
-                });
-            } else if (tipo === 'armazon') {
-                armazones.forEach(armazon => {
-                    if (armazon.stock > 0) {
-                        const option = document.createElement('option');
-                        option.value = armazon.id;
-                        option.textContent = `${armazon.marca} - ${armazon.modelo} (Stock: ${armazon.stock})`;
-                        option.dataset.precio = armazon.precioVenta || 0;
-                        option.dataset.stock = armazon.stock || 0;
-                        productoSelect.appendChild(option);
-                    }
-                });
-            }
-        });
+  if (cantidadInput) {
+    cantidadInput.addEventListener('input', () => {
+      const cantidad = parseInt(cantidadInput.value) || 1;
+      const stock = parseInt(cantidadInput.dataset.stock) || 999;
 
-        productoSelect.addEventListener('change', async () => { // Modificado para ser async
-            const selectedOption = productoSelect.options[productoSelect.selectedIndex];
-            const precio = parseFloat(selectedOption.dataset.precio) || 0;
-            const stock = parseInt(selectedOption.dataset.stock) || 0;
+      if (cantidad < 1) {
+        cantidadInput.value = 1;
+      } else if (cantidad > stock) {
+        showToast(`Stock insuficiente. Máximo disponible: ${stock}`, 'warning');
+        cantidadInput.value = stock;
+      }
 
-            const precioInput = document.getElementById(`precio_${index}`);
-            if (precioInput) {
-                precioInput.value = precio.toFixed(2);
-                precioInput.dataset.original = precio;
-            }
+      if (decreaseBtn) {
+        decreaseBtn.disabled = parseInt(cantidadInput.value) <= 1;
+      }
+      if (increaseBtn) {
+        increaseBtn.disabled = parseInt(cantidadInput.value) >= stock;
+      }
 
-            if (cantidadInput) {
-                cantidadInput.max = stock;
-                cantidadInput.dataset.stock = stock;
-                cantidadInput.value = 1;
+      calcularSubtotal(index);
+    });
+  }
 
-                if (decreaseBtn) {
-                    decreaseBtn.disabled = cantidadInput.value <= 1;
-                }
-                if (increaseBtn) {
-                    increaseBtn.disabled = cantidadInput.value >= stock;
-                }
+  if (descuentoInput) {
+    descuentoInput.addEventListener('input', () => {
+      const descuento = parseFloat(descuentoInput.value) || 0;
 
-                const stockInfo = document.getElementById(`stockInfo_${index}`);
-                if (stockInfo) {
-                    stockInfo.textContent = `Stock disponible: ${stock}`;
-                    stockInfo.style.display = 'block';
-                }
-            }
+      if (descuento !== 0) {
+        descuentoInput.dataset.manuallySet = 'true';
+      } else {
+        delete descuentoInput.dataset.manuallySet;
+      }
 
-            // Modificado para usar información de crédito
-            const clienteId = document.getElementById('clienteId').value;
-            if (clienteId) {
-                const cliente = clientes.find(c => c.id === clienteId);
-                if (cliente && cliente.convenio && cliente.empresaId) {
-                    const creditoInfo = await obtenerInfoCreditoCliente(clienteId);
-                    if (creditoInfo && creditoInfo.empresa && creditoInfo.empresa.descuento) {
-                        const descuentoInput = document.getElementById(`descuento_${index}`);
-                        if (descuentoInput && !descuentoInput.dataset.manuallySet) {
-                            descuentoInput.value = creditoInfo.empresa.descuento;
-                            descuentoInput.dispatchEvent(new Event('input'));
-                        }
-                    }
-                }
-            }
+      calcularSubtotal(index);
+    });
+  }
 
-            calcularSubtotal(index);
-        });
-    }
-
-    const precioInput = document.getElementById(`precio_${index}`);
-    const subtotalInput = document.getElementById(`subtotal_${index}`);
-    const descuentoInput = document.getElementById(`descuento_${index}`);
-
-    if (cantidadInput) {
-        cantidadInput.addEventListener('input', () => {
-            const cantidad = parseInt(cantidadInput.value) || 1;
-            const stock = parseInt(cantidadInput.dataset.stock) || 999;
-
-            if (cantidad < 1) {
-                cantidadInput.value = 1;
-            } else if (cantidad > stock) {
-                showToast(`Stock insuficiente. Máximo disponible: ${stock}`, 'warning');
-                cantidadInput.value = stock;
-            }
-
-            if (decreaseBtn) {
-                decreaseBtn.disabled = parseInt(cantidadInput.value) <= 1;
-            }
-            if (increaseBtn) {
-                increaseBtn.disabled = parseInt(cantidadInput.value) >= stock;
-            }
-
-            calcularSubtotal(index);
-        });
-    }
-
-    if (descuentoInput) {
-        descuentoInput.addEventListener('input', () => {
-            const descuento = parseFloat(descuentoInput.value) || 0;
-
-            if (descuento !== 0) {
-                descuentoInput.dataset.manuallySet = 'true';
-            } else {
-                delete descuentoInput.dataset.manuallySet;
-            }
-
-            calcularSubtotal(index);
-        });
-    }
-
-    if (precioInput) {
-        precioInput.addEventListener('input', () => {
-            calcularSubtotal(index);
-        });
-    }
+  if (precioInput) {
+    precioInput.addEventListener('input', () => {
+      calcularSubtotal(index);
+    });
+  }
 }
 
 // Función para calcular subtotal de un producto
 function calcularSubtotal(index) {
-    const cantidadInput = document.getElementById(`cantidad_${index}`);
-    const precioInput = document.getElementById(`precio_${index}`);
-    const descuentoInput = document.getElementById(`descuento_${index}`);
-    const subtotalInput = document.getElementById(`subtotal_${index}`);
+  const cantidadInput = document.getElementById(`cantidad_${index}`);
+  const precioInput = document.getElementById(`precio_${index}`);
+  const descuentoInput = document.getElementById(`descuento_${index}`);
+  const subtotalInput = document.getElementById(`subtotal_${index}`);
 
-    if (!cantidadInput || !precioInput || !subtotalInput) return;
+  if (!cantidadInput || !precioInput || !subtotalInput) return;
 
-    const cantidad = parseInt(cantidadInput.value) || 0;
-    const precioOriginal = parseFloat(precioInput.dataset.original) || parseFloat(precioInput.value) || 0;
-    const descuento = parseFloat(descuentoInput?.value) || 0;
+  const cantidad = parseInt(cantidadInput.value) || 0;
+  const precioOriginal = parseFloat(precioInput.dataset.original) || parseFloat(precioInput.value) || 0;
+  const descuento = parseFloat(descuentoInput?.value) || 0;
 
-    const precioConDescuento = precioOriginal * (1 - (descuento / 100));
-    precioInput.value = precioConDescuento.toFixed(2);
+  const precioConDescuento = precioOriginal * (1 - (descuento / 100));
+  precioInput.value = precioConDescuento.toFixed(2);
 
-    const subtotal = cantidad * precioConDescuento;
-    subtotalInput.value = subtotal.toFixed(2);
+  const subtotal = cantidad * precioConDescuento;
+  subtotalInput.value = subtotal.toFixed(2);
 
-    calcularTotal();
+  calcularTotal();
 }
 
 // Función para calcular el total de la venta
 function calcularTotal() {
-    const subtotales = document.querySelectorAll('.subtotal');
-    let total = 0;
+  const subtotales = document.querySelectorAll('.subtotal');
+  let total = 0;
 
-    subtotales.forEach(subtotal => {
-        total += parseFloat(subtotal.value) || 0;
-    });
+  subtotales.forEach(subtotal => {
+    total += parseFloat(subtotal.value) || 0;
+  });
 
-    const totalInput = document.getElementById('total');
-    if (totalInput) {
-        totalInput.value = total.toFixed(2);
-    }
+  const totalInput = document.getElementById('total');
+  if (totalInput) {
+    totalInput.value = total.toFixed(2);
+  }
 
-    // AGREGADO: Actualizar visibilidad del abono cuando cambie el total
-    updateAbonoVisibility();
+  // AGREGADO: Actualizar visibilidad del abono cuando cambie el total
+  updateAbonoVisibility();
 
-    const abonoInput = document.getElementById('abono');
-    if (abonoInput) {
-        abonoInput.max = total;
-    }
+  const abonoInput = document.getElementById('abono');
+  if (abonoInput) {
+    abonoInput.max = total;
+  }
 }
 
 // Configurar eventos para los formularios
 function setupFormEvents() {
-    const saleForm = document.getElementById('saleForm');
-    if (saleForm) {
-        saleForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handleSaleSubmit();
-        });
-    }
+  const saleForm = document.getElementById('saleForm');
+  if (saleForm) {
+    saleForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handleSaleSubmit();
+    });
+  }
 }
 
 // Función corregida para manejar envío del formulario de venta
 async function handleSaleSubmit() {
-    try {
-        const saleId = document.getElementById('saleId').value;
-        const clienteId = document.getElementById('clienteId').value;
-        const fechaVenta = document.getElementById('fechaVenta').value;
-        const total = parseFloat(document.getElementById('total').value) || 0;
-        const observaciones = document.getElementById('observaciones').value;
+  try {
+    const saleId = document.getElementById('saleId').value;
+    const clienteId = document.getElementById('clienteId').value;
+    const fechaVenta = document.getElementById('fechaVenta').value;
+    const total = parseFloat(document.getElementById('total').value) || 0;
+    const observaciones = document.getElementById('observaciones').value;
 
-        const productosItems = document.querySelectorAll('.producto-item');
-        if (productosItems.length === 0) {
-            showToast('Debe agregar al menos un producto', 'warning');
-            return;
-        }
-
-        const productos = [];
-        const productosParaActualizar = [];
-        let isValid = true;
-
-        for (let index = 0; index < productosItems.length; index++) {
-            const tipoProducto = document.getElementById(`tipoProducto_${index}`)?.value;
-            const productoId = document.getElementById(`producto_${index}`)?.value;
-            const cantidad = parseInt(document.getElementById(`cantidad_${index}`)?.value) || 0;
-            const precio = parseFloat(document.getElementById(`precio_${index}`)?.value) || 0;
-            const subtotal = parseFloat(document.getElementById(`subtotal_${index}`)?.value) || 0;
-            const descuento = parseFloat(document.getElementById(`descuento_${index}`)?.value) || 0;
-
-            if (!tipoProducto || !productoId || cantidad <= 0 || precio <= 0) {
-                isValid = false;
-                showToast(`Complete todos los campos del producto ${index + 1}`, 'warning');
-                break;
-            }
-
-            const productoSelect = document.getElementById(`producto_${index}`);
-            const nombreProducto = productoSelect?.options[productoSelect.selectedIndex]?.text || 'Producto desconocido';
-
-            productos.push({
-                tipo: tipoProducto,
-                productoId,
-                nombreProducto,
-                cantidad,
-                precio,
-                descuento,
-                subtotal
-            });
-
-            productosParaActualizar.push({
-                tipo: tipoProducto,
-                id: productoId,
-                cantidad
-            });
-        }
-
-        if (!isValid) return;
-
-        let abono = 0;
-        let convenio = false;
-        let empresaId = null;
-
-        if (clienteId) {
-            const cliente = clientes.find(c => c.id === clienteId);
-            if (cliente && cliente.convenio) {
-                convenio = true;
-                empresaId = cliente.empresaId;
-                
-                // CORREGIDO: Validar crédito disponible para convenios
-                const creditoInfo = await obtenerInfoCreditoCliente(clienteId);
-                if (creditoInfo) {
-                    if (total > creditoInfo.creditoDisponible) {
-                        showToast(`Crédito insuficiente. Disponible: $${creditoInfo.creditoDisponible.toFixed(2)}, Requerido: $${total.toFixed(2)}`, 'warning');
-                        return;
-                    }
-                    // Para convenios, el "abono" es el total (se paga con crédito)
-                    abono = total;
-                } else {
-                    showToast('Error al obtener información de crédito', 'danger');
-                    return;
-                }
-            } else {
-                // Cliente normal - obtener abono del formulario
-                abono = parseFloat(document.getElementById('abono').value) || 0;
-                if (abono > total) {
-                    showToast('El abono no puede ser mayor al total', 'warning');
-                    return;
-                }
-            }
-        } else {
-            // Venta de mostrador - pago completo
-            abono = total;
-        }
-
-        const confirmMessage = convenio 
-            ? `¿Confirmar venta por $${total.toFixed(2)} con crédito de convenio?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`
-            : `¿Confirmar venta por $${total.toFixed(2)}?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`;
-
-        showCustomAlert(
-            'Confirmar Venta',
-            confirmMessage,
-            'info',
-            async () => {
-                await processSale({
-                    saleId,
-                    clienteId,
-                    fechaVenta,
-                    productos,
-                    productosParaActualizar,
-                    total,
-                    abono,
-                    observaciones,
-                    convenio,
-                    empresaId
-                });
-            }
-        );
-
-    } catch (error) {
-        console.error('Error al procesar venta:', error);
-        showToast('Error al procesar la venta', 'danger');
+    const productosItems = document.querySelectorAll('.producto-item');
+    if (productosItems.length === 0) {
+      showToast('Debe agregar al menos un producto', 'warning');
+      return;
     }
+
+    const productos = [];
+    const productosParaActualizar = [];
+    let isValid = true;
+
+    for (let index = 0; index < productosItems.length; index++) {
+      const tipoProducto = document.getElementById(`tipoProducto_${index}`)?.value;
+      const productoId = document.getElementById(`producto_${index}`)?.value;
+      const cantidad = parseInt(document.getElementById(`cantidad_${index}`)?.value) || 0;
+      const precio = parseFloat(document.getElementById(`precio_${index}`)?.value) || 0;
+      const subtotal = parseFloat(document.getElementById(`subtotal_${index}`)?.value) || 0;
+      const descuento = parseFloat(document.getElementById(`descuento_${index}`)?.value) || 0;
+
+      if (!tipoProducto || !productoId || cantidad <= 0 || precio <= 0) {
+        isValid = false;
+        showToast(`Complete todos los campos del producto ${index + 1}`, 'warning');
+        break;
+      }
+
+      const productoSelect = document.getElementById(`producto_${index}`);
+      const nombreProducto = productoSelect?.options[productoSelect.selectedIndex]?.text || 'Producto desconocido';
+
+      productos.push({
+        tipo: tipoProducto,
+        productoId,
+        nombreProducto,
+        cantidad,
+        precio,
+        descuento,
+        subtotal
+      });
+
+      productosParaActualizar.push({
+        tipo: tipoProducto,
+        id: productoId,
+        cantidad
+      });
+    }
+
+    if (!isValid) return;
+
+    let abono = 0;
+    let convenio = false;
+    let empresaId = null;
+
+    if (clienteId) {
+      const cliente = clientes.find(c => c.id === clienteId);
+      if (cliente && cliente.convenio) {
+        convenio = true;
+        empresaId = cliente.empresaId;
+
+        // CORREGIDO: Validar crédito disponible para convenios
+        const creditoInfo = await obtenerInfoCreditoCliente(clienteId);
+        if (creditoInfo) {
+          if (total > creditoInfo.creditoDisponible) {
+            showToast(`Crédito insuficiente. Disponible: $${creditoInfo.creditoDisponible.toFixed(2)}, Requerido: $${total.toFixed(2)}`, 'warning');
+            return;
+          }
+          // Para convenios, el "abono" es el total (se paga con crédito)
+          abono = total;
+        } else {
+          showToast('Error al obtener información de crédito', 'danger');
+          return;
+        }
+      } else {
+        // Cliente normal - obtener abono del formulario
+        abono = parseFloat(document.getElementById('abono').value) || 0;
+        if (abono > total) {
+          showToast('El abono no puede ser mayor al total', 'warning');
+          return;
+        }
+      }
+    } else {
+      // Venta de mostrador - pago completo
+      abono = total;
+    }
+
+    const confirmMessage = convenio
+      ? `¿Confirmar venta por $${total.toFixed(2)} con crédito de convenio?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`
+      : `¿Confirmar venta por $${total.toFixed(2)}?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`;
+
+    showCustomAlert(
+      'Confirmar Venta',
+      confirmMessage,
+      'info',
+      async () => {
+        await processSale({
+          saleId,
+          clienteId,
+          fechaVenta,
+          productos,
+          productosParaActualizar,
+          total,
+          abono,
+          observaciones,
+          convenio,
+          empresaId
+        });
+      }
+    );
+
+  } catch (error) {
+    console.error('Error al procesar venta:', error);
+    showToast('Error al procesar la venta', 'danger');
+  }
 }
 
 // Función corregida para procesar la venta
 async function processSale(saleData) {
-    try {
-        const {
-            saleId,
-            clienteId,
-            fechaVenta,
-            productos,
-            productosParaActualizar,
-            total,
-            abono,
-            observaciones,
-            convenio,
-            empresaId
-        } = saleData;
+  try {
+    const {
+      saleId,
+      clienteId,
+      fechaVenta,
+      productos,
+      productosParaActualizar,
+      total,
+      abono,
+      observaciones,
+      convenio,
+      empresaId
+    } = saleData;
 
-        // CORREGIDO: Para convenios, el estado siempre es 'pagada' porque se paga con crédito
-        let estado = 'pendiente';
-        if (convenio || abono >= total) {
-            estado = 'pagada';
-        } else if (abono > 0) {
-            estado = 'parcial';
-        }
-
-        const ventaData = {
-            clienteId: clienteId || null,
-            fecha: fechaVenta ? new Date(fechaVenta) : new Date(),
-            productos,
-            total,
-            abono,
-            saldo: convenio ? 0 : total - abono, // CORREGIDO: Para convenios, saldo siempre es 0
-            estado,
-            convenio,
-            empresaId,
-            observaciones: observaciones || '',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-        };
-
-        const ventaRef = await addDoc(collection(db, 'ventas'), ventaData);
-
-        await actualizarInventario(productosParaActualizar);
-
-        // CORREGIDO: Para convenios, registrar como pago con crédito, no como abono
-        if (abono > 0) {
-            const metodoPago = convenio ? 'credito_convenio' : 'efectivo';
-            const descripcion = convenio ? 'Pago con crédito de convenio' : 'Abono inicial';
-            
-            if (convenio) {
-                // Para convenios, registrar como pago completo
-                await registrarPago(ventaRef.id, clienteId, abono, descripcion, metodoPago);
-            } else {
-                // Para clientes normales, registrar como abono
-                await registrarAbono(ventaRef.id, clienteId, abono, descripcion, metodoPago);
-            }
-        }
-
-        if (clienteId) {
-            await updateDoc(doc(db, 'clientes', clienteId), {
-                ultimaVisita: serverTimestamp()
-            });
-        }
-
-        const mensaje = convenio 
-            ? 'Venta registrada correctamente con crédito de convenio'
-            : 'Venta registrada correctamente';
-            
-        showToast(mensaje, 'success');
-
-        document.getElementById('saleModal').style.display = 'none';
-        
-        // Limpiar cache y recargar
-        ventasCache.clear();
-        saldoCache.clear();
-        await loadVentas();
-        await Promise.all([loadProductos(), loadArmazones()]);
-
-    } catch (error) {
-        console.error('Error al guardar venta:', error);
-        showToast('Error al guardar la venta', 'danger');
+    // CORREGIDO: Para convenios, el estado siempre es 'pagada' porque se paga con crédito
+    let estado = 'pendiente';
+    if (convenio || abono >= total) {
+      estado = 'pagada';
+    } else if (abono > 0) {
+      estado = 'parcial';
     }
+
+    const ventaData = {
+      clienteId: clienteId || null,
+      fecha: fechaVenta ? new Date(fechaVenta) : new Date(),
+      productos,
+      total,
+      abono,
+      saldo: convenio ? 0 : total - abono, // CORREGIDO: Para convenios, saldo siempre es 0
+      estado,
+      convenio,
+      empresaId,
+      observaciones: observaciones || '',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    const ventaRef = await addDoc(collection(db, 'ventas'), ventaData);
+
+    await actualizarInventario(productosParaActualizar);
+
+    // CORREGIDO: Para convenios, registrar como pago con crédito, no como abono
+    if (abono > 0) {
+      const metodoPago = convenio ? 'credito_convenio' : 'efectivo';
+      const descripcion = convenio ? 'Pago con crédito de convenio' : 'Abono inicial';
+
+      if (convenio) {
+        // Para convenios, registrar como pago completo
+        await registrarPago(ventaRef.id, clienteId, abono, descripcion, metodoPago);
+      } else {
+        // Para clientes normales, registrar como abono
+        await registrarAbono(ventaRef.id, clienteId, abono, descripcion, metodoPago);
+      }
+    }
+
+    if (clienteId) {
+      await updateDoc(doc(db, 'clientes', clienteId), {
+        ultimaVisita: serverTimestamp()
+      });
+    }
+
+    const mensaje = convenio
+      ? 'Venta registrada correctamente con crédito de convenio'
+      : 'Venta registrada correctamente';
+
+    showToast(mensaje, 'success');
+
+    document.getElementById('saleModal').style.display = 'none';
+
+    // Limpiar cache y recargar
+    ventasCache.clear();
+    saldoCache.clear();
+    await loadVentas();
+    await Promise.all([loadProductos(), loadArmazones()]);
+
+  } catch (error) {
+    console.error('Error al guardar venta:', error);
+    showToast('Error al guardar la venta', 'danger');
+  }
 }
 
 // Función para actualizar el inventario
 async function actualizarInventario(productos) {
-    try {
-        for (const producto of productos) {
-            const collectionName = producto.tipo === 'producto' ? 'productos' : 'armazones';
-            const productoRef = doc(db, collectionName, producto.id);
-            const productoDoc = await getDoc(productoRef);
+  try {
+    for (const producto of productos) {
+      const collectionName = producto.tipo === 'producto' ? 'productos' : 'armazones';
+      const productoRef = doc(db, collectionName, producto.id);
+      const productoDoc = await getDoc(productoRef);
 
-            if (productoDoc.exists()) {
-                const productoData = productoDoc.data();
-                const nuevoStock = Math.max(0, (productoData.stock || 0) - producto.cantidad);
+      if (productoDoc.exists()) {
+        const productoData = productoDoc.data();
+        const nuevoStock = Math.max(0, (productoData.stock || 0) - producto.cantidad);
 
-                await updateDoc(productoRef, {
-                    stock: nuevoStock,
-                    updatedAt: serverTimestamp()
-                });
+        await updateDoc(productoRef, {
+          stock: nuevoStock,
+          updatedAt: serverTimestamp()
+        });
 
-                console.log(`Stock de ${producto.tipo} ${producto.id} actualizado: ${productoData.stock} -> ${nuevoStock}`);
-            }
-        }
-
-        return true;
-    } catch (error) {
-        console.error("Error al actualizar inventario:", error);
-        throw error;
+        console.log(`Stock de ${producto.tipo} ${producto.id} actualizado: ${productoData.stock} -> ${nuevoStock}`);
+      }
     }
+
+    return true;
+  } catch (error) {
+    console.error("Error al actualizar inventario:", error);
+    throw error;
+  }
 }
 
 // Función para registrar un abono
 async function registrarAbono(ventaId, clienteId, monto, descripcion = 'Abono', metodoPago = 'efectivo', fecha = new Date()) {
-    try {
-        const abonoData = {
-            ventaId,
-            clienteId: clienteId || null,
-            monto,
-            descripcion,
-            metodoPago,
-            fecha: fecha,
-            createdAt: serverTimestamp()
-        };
+  try {
+    const abonoData = {
+      ventaId,
+      clienteId: clienteId || null,
+      monto,
+      descripcion,
+      metodoPago,
+      fecha: fecha,
+      createdAt: serverTimestamp()
+    };
 
-        const abonoRef = await addDoc(collection(db, 'abonos'), abonoData);
+    const abonoRef = await addDoc(collection(db, 'abonos'), abonoData);
 
-        if (clienteId) {
-            await updateDoc(doc(db, 'clientes', clienteId), {
-                ultimaVisita: serverTimestamp()
-            });
-        }
-
-        return abonoRef.id;
-    } catch (error) {
-        console.error("Error al registrar abono:", error);
-        throw error;
+    if (clienteId) {
+      await updateDoc(doc(db, 'clientes', clienteId), {
+        ultimaVisita: serverTimestamp()
+      });
     }
+
+    return abonoRef.id;
+  } catch (error) {
+    console.error("Error al registrar abono:", error);
+    throw error;
+  }
 }
 
 // Configurar eventos de búsqueda
 function setupSearchEvents() {
-    const searchVenta = document.getElementById('searchVenta');
+  const searchVenta = document.getElementById('searchVenta');
 
-    if (searchVenta) {
-        searchVenta.addEventListener('input', (e) => {
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
-            }
+  if (searchVenta) {
+    searchVenta.addEventListener('input', (e) => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
 
-            searchTimeout = setTimeout(() => {
-                filtrosVentas.busqueda = e.target.value.trim();
-                currentPage = 1;
-                applyFilters();
-            }, 300);
-        });
-    }
+      searchTimeout = setTimeout(() => {
+        filtrosVentas.busqueda = e.target.value.trim();
+        currentPage = 1;
+        applyFilters();
+      }, 300);
+    });
+  }
 }
 
 // Configurar eventos de filtros
 function setupFilterEvents() {
-    const toggleFiltrosBtn = document.getElementById('toggleFiltrosBtn');
-    const filtrosPanel = document.getElementById('filtrosPanel');
-    const aplicarFiltrosBtn = document.getElementById('aplicarFiltrosBtn');
-    const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
+  const toggleFiltrosBtn = document.getElementById('toggleFiltrosBtn');
+  const filtrosPanel = document.getElementById('filtrosPanel');
+  const aplicarFiltrosBtn = document.getElementById('aplicarFiltrosBtn');
+  const limpiarFiltrosBtn = document.getElementById('limpiarFiltrosBtn');
 
-    if (toggleFiltrosBtn && filtrosPanel) {
-        toggleFiltrosBtn.addEventListener('click', () => {
-            const isVisible = filtrosPanel.style.display !== 'none';
-            filtrosPanel.style.display = isVisible ? 'none' : 'block';
-            toggleFiltrosBtn.classList.toggle('active', !isVisible);
-        });
-    }
+  if (toggleFiltrosBtn && filtrosPanel) {
+    toggleFiltrosBtn.addEventListener('click', () => {
+      const isVisible = filtrosPanel.style.display !== 'none';
+      filtrosPanel.style.display = isVisible ? 'none' : 'block';
+      toggleFiltrosBtn.classList.toggle('active', !isVisible);
+    });
+  }
 
-    if (aplicarFiltrosBtn) {
-        aplicarFiltrosBtn.addEventListener('click', () => {
-            applyAdvancedFilters();
-        });
-    }
+  if (aplicarFiltrosBtn) {
+    aplicarFiltrosBtn.addEventListener('click', () => {
+      applyAdvancedFilters();
+    });
+  }
 
-    if (limpiarFiltrosBtn) {
-        limpiarFiltrosBtn.addEventListener('click', () => {
-            clearFilters();
-        });
-    }
+  if (limpiarFiltrosBtn) {
+    limpiarFiltrosBtn.addEventListener('click', () => {
+      clearFilters();
+    });
+  }
 }
 
 // Aplicar filtros avanzados
 function applyAdvancedFilters() {
-    filtrosVentas.estado = document.getElementById('filtroEstado')?.value || '';
-    filtrosVentas.convenio = document.getElementById('filtroConvenio')?.value || '';
-    filtrosVentas.fechaInicio = document.getElementById('filtroFechaInicio')?.value || '';
-    filtrosVentas.fechaFin = document.getElementById('filtroFechaFin')?.value || '';
+  filtrosVentas.estado = document.getElementById('filtroEstado')?.value || '';
+  filtrosVentas.convenio = document.getElementById('filtroConvenio')?.value || '';
+  filtrosVentas.fechaInicio = document.getElementById('filtroFechaInicio')?.value || '';
+  filtrosVentas.fechaFin = document.getElementById('filtroFechaFin')?.value || '';
 
-    currentPage = 1;
-    applyFilters();
+  currentPage = 1;
+  applyFilters();
 }
 
 // Limpiar filtros
 function clearFilters() {
-    document.getElementById('filtroEstado').value = '';
-    document.getElementById('filtroConvenio').value = '';
-    document.getElementById('filtroFechaInicio').value = '';
-    document.getElementById('filtroFechaFin').value = '';
-    document.getElementById('searchVenta').value = '';
+  document.getElementById('filtroEstado').value = '';
+  document.getElementById('filtroConvenio').value = '';
+  document.getElementById('filtroFechaInicio').value = '';
+  document.getElementById('filtroFechaFin').value = '';
+  document.getElementById('searchVenta').value = '';
 
-    filtrosVentas = {
-        cliente: '',
-        estado: '',
-        fechaInicio: '',
-        fechaFin: '',
-        convenio: '',
-        busqueda: ''
-    };
+  filtrosVentas = {
+    cliente: '',
+    estado: '',
+    fechaInicio: '',
+    fechaFin: '',
+    convenio: '',
+    busqueda: ''
+  };
 
-    currentPage = 1;
-    applyFilters();
+  currentPage = 1;
+  applyFilters();
 }
 
 // Aplicar filtros
 function applyFilters() {
-    filteredVentas = allVentas.filter(venta => {
-        if (filtrosVentas.busqueda) {
-            const busqueda = filtrosVentas.busqueda.toLowerCase();
-            const matchId = venta.id.toLowerCase().includes(busqueda);
-            const matchCliente = venta.clienteId && clientes.find(c =>
-                c.id === venta.clienteId && c.nombre.toLowerCase().includes(busqueda)
-            );
-            const matchProducto = venta.productos && venta.productos.some(p =>
-                p.nombreProducto.toLowerCase().includes(busqueda)
-            );
+  filteredVentas = allVentas.filter(venta => {
+    if (filtrosVentas.busqueda) {
+      const busqueda = filtrosVentas.busqueda.toLowerCase();
+      const matchId = venta.id.toLowerCase().includes(busqueda);
+      const matchCliente = venta.clienteId && clientes.find(c =>
+        c.id === venta.clienteId && c.nombre.toLowerCase().includes(busqueda)
+      );
+      const matchProducto = venta.productos && venta.productos.some(p =>
+        p.nombreProducto.toLowerCase().includes(busqueda)
+      );
 
-            if (!matchId && !matchCliente && !matchProducto) {
-                return false;
-            }
+      if (!matchId && !matchCliente && !matchProducto) {
+        return false;
+      }
+    }
+
+    if (filtrosVentas.estado && venta.estado !== filtrosVentas.estado) {
+      return false;
+    }
+
+    if (filtrosVentas.convenio) {
+      const hasConvenio = filtrosVentas.convenio === 'true';
+      if (venta.convenio !== hasConvenio) {
+        return false;
+      }
+    }
+
+    if (filtrosVentas.fechaInicio || filtrosVentas.fechaFin) {
+      const fechaVenta = venta.fecha instanceof Timestamp
+        ? venta.fecha.toDate()
+        : new Date(venta.fecha);
+
+      if (filtrosVentas.fechaInicio) {
+        const fechaInicio = new Date(filtrosVentas.fechaInicio);
+        if (fechaVenta < fechaInicio) {
+          return false;
         }
+      }
 
-        if (filtrosVentas.estado && venta.estado !== filtrosVentas.estado) {
-            return false;
+      if (filtrosVentas.fechaFin) {
+        const fechaFin = new Date(filtrosVentas.fechaFin);
+        fechaFin.setHours(23, 59, 59, 999);
+        if (fechaVenta > fechaFin) {
+          return false;
         }
+      }
+    }
 
-        if (filtrosVentas.convenio) {
-            const hasConvenio = filtrosVentas.convenio === 'true';
-            if (venta.convenio !== hasConvenio) {
-                return false;
-            }
-        }
+    return true;
+  });
 
-        if (filtrosVentas.fechaInicio || filtrosVentas.fechaFin) {
-            const fechaVenta = venta.fecha instanceof Timestamp
-                ? venta.fecha.toDate()
-                : new Date(venta.fecha);
+  totalPages = Math.ceil(filteredVentas.length / SALES_PER_PAGE);
+  if (totalPages === 0) totalPages = 1;
+  if (currentPage > totalPages) currentPage = totalPages;
 
-            if (filtrosVentas.fechaInicio) {
-                const fechaInicio = new Date(filtrosVentas.fechaInicio);
-                if (fechaVenta < fechaInicio) {
-                    return false;
-                }
-            }
-
-            if (filtrosVentas.fechaFin) {
-                const fechaFin = new Date(filtrosVentas.fechaFin);
-                fechaFin.setHours(23, 59, 59, 999);
-                if (fechaVenta > fechaFin) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    });
-
-    totalPages = Math.ceil(filteredVentas.length / SALES_PER_PAGE);
-    if (totalPages === 0) totalPages = 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-
-    displayVentas();
-    updatePaginationControls();
+  displayVentas();
+  updatePaginationControls();
 }
 
 // Configurar eventos de paginación
 function setupPaginationEvents() {
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
+  const prevPageBtn = document.getElementById('prevPageBtn');
+  const nextPageBtn = document.getElementById('nextPageBtn');
 
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                displayVentas();
-                updatePaginationControls();
-            }
-        });
-    }
+  if (prevPageBtn) {
+    prevPageBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        displayVentas();
+        updatePaginationControls();
+      }
+    });
+  }
 
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                displayVentas();
-                updatePaginationControls();
-            }
-        });
-    }
+  if (nextPageBtn) {
+    nextPageBtn.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        displayVentas();
+        updatePaginationControls();
+      }
+    });
+  }
 }
 
 // Actualizar controles de paginación
 function updatePaginationControls() {
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
-    const currentPageSpan = document.getElementById('currentPage');
-    const totalPagesSpan = document.getElementById('totalPages');
+  const prevPageBtn = document.getElementById('prevPageBtn');
+  const nextPageBtn = document.getElementById('nextPageBtn');
+  const currentPageSpan = document.getElementById('currentPage');
+  const totalPagesSpan = document.getElementById('totalPages');
 
-    if (prevPageBtn) {
-        prevPageBtn.disabled = currentPage <= 1;
-    }
+  if (prevPageBtn) {
+    prevPageBtn.disabled = currentPage <= 1;
+  }
 
-    if (nextPageBtn) {
-        nextPageBtn.disabled = currentPage >= totalPages;
-    }
+  if (nextPageBtn) {
+    nextPageBtn.disabled = currentPage >= totalPages;
+  }
 
-    if (currentPageSpan) {
-        currentPageSpan.textContent = currentPage;
-    }
+  if (currentPageSpan) {
+    currentPageSpan.textContent = currentPage;
+  }
 
-    if (totalPagesSpan) {
-        totalPagesSpan.textContent = totalPages;
-    }
+  if (totalPagesSpan) {
+    totalPagesSpan.textContent = totalPages;
+  }
 }
 
 // Función optimizada para cargar ventas
 async function loadVentas() {
-    const tableBody = document.getElementById('ventasTableBody');
-    if (!tableBody) return;
+  const tableBody = document.getElementById('ventasTableBody');
+  if (!tableBody) return;
 
-    // Mostrar skeleton loading
-    showSkeletonLoading(tableBody);
+  // Mostrar skeleton loading
+  showSkeletonLoading(tableBody);
 
-    try {
-        const startTime = performance.now();
-        
-        // Construir query optimizada
-        let ventasQuery = query(
-            collection(db, 'ventas'),
-            orderBy('fecha', 'desc'),
-            limit(50) // Reducido de 100 a 50 para mejor rendimiento
-        );
+  try {
+    const startTime = performance.now();
 
-        const ventasSnapshot = await getDocs(ventasQuery);
-        
-        // Procesar ventas en lotes para mejor rendimiento
-        allVentas = [];
-        const ventaIds = [];
-        
-        ventasSnapshot.forEach(doc => {
-            const venta = {
-                id: doc.id,
-                ...doc.data()
-            };
-            allVentas.push(venta);
-            ventaIds.push(doc.id);
-        });
+    // Construir query optimizada
+    let ventasQuery = query(
+      collection(db, 'ventas'),
+      orderBy('fecha', 'desc'),
+      limit(50) // Reducido de 100 a 50 para mejor rendimiento
+    );
 
-        // Calcular saldos en paralelo usando cache
-        await calculateSaldosInBatch(ventaIds);
+    const ventasSnapshot = await getDocs(ventasQuery);
 
-        // Actualizar cache
-        lastCacheUpdate = Date.now();
-        
-        // Aplicar filtros y mostrar
-        applyFilters();
+    // Procesar ventas en lotes para mejor rendimiento
+    allVentas = [];
+    const ventaIds = [];
 
-        const endTime = performance.now();
-        console.log(`Ventas cargadas en ${(endTime - startTime).toFixed(2)}ms`);
+    ventasSnapshot.forEach(doc => {
+      const venta = {
+        id: doc.id,
+        ...doc.data()
+      };
+      allVentas.push(venta);
+      ventaIds.push(doc.id);
+    });
 
-    } catch (error) {
-        console.error("Error al cargar ventas:", error);
-        tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center text-red-500">Error al cargar ventas</td></tr>';
-        showToast('Error al cargar ventas', 'danger');
-    }
+    // Calcular saldos en paralelo usando cache
+    await calculateSaldosInBatch(ventaIds);
+
+    // Actualizar cache
+    lastCacheUpdate = Date.now();
+
+    // Aplicar filtros y mostrar
+    applyFilters();
+
+    const endTime = performance.now();
+    console.log(`Ventas cargadas en ${(endTime - startTime).toFixed(2)}ms`);
+
+  } catch (error) {
+    console.error("Error al cargar ventas:", error);
+    tableBody.innerHTML = '<tr><td colspan="9" class="py-4 text-center text-red-500">Error al cargar ventas</td></tr>';
+    showToast('Error al cargar ventas', 'danger');
+  }
 }
 
 // Mostrar skeleton loading
 function showSkeletonLoading(tableBody) {
-    const skeletonRows = Array.from({ length: 5 }, (_, i) => `
+  const skeletonRows = Array.from({ length: 5 }, (_, i) => `
         <tr class="animate-pulse">
             <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
             <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
@@ -1596,111 +1611,111 @@ function showSkeletonLoading(tableBody) {
             <td class="py-3 px-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
         </tr>
     `).join('');
-    
-    tableBody.innerHTML = skeletonRows;
+
+  tableBody.innerHTML = skeletonRows;
 }
 
 // Calcular saldos en lotes para mejor rendimiento
 async function calculateSaldosInBatch(ventaIds) {
-    const batchSize = 10;
-    const batches = [];
-    
-    for (let i = 0; i < ventaIds.length; i += batchSize) {
-        batches.push(ventaIds.slice(i, i + batchSize));
-    }
+  const batchSize = 10;
+  const batches = [];
 
-    // Procesar lotes en paralelo
-    await Promise.all(batches.map(async (batch) => {
-        await Promise.all(batch.map(async (ventaId) => {
-            const venta = allVentas.find(v => v.id === ventaId);
-            if (venta) {
-                venta.saldoInfo = await calcularSaldoPendiente(ventaId);
-            }
-        }));
+  for (let i = 0; i < ventaIds.length; i += batchSize) {
+    batches.push(ventaIds.slice(i, i + batchSize));
+  }
+
+  // Procesar lotes en paralelo
+  await Promise.all(batches.map(async (batch) => {
+    await Promise.all(batch.map(async (ventaId) => {
+      const venta = allVentas.find(v => v.id === ventaId);
+      if (venta) {
+        venta.saldoInfo = await calcularSaldoPendiente(ventaId);
+      }
     }));
+  }));
 }
 
 // Mostrar ventas en la tabla con optimizaciones
 function displayVentas() {
-    const tableBody = document.getElementById('ventasTableBody');
-    if (!tableBody) return;
+  const tableBody = document.getElementById('ventasTableBody');
+  if (!tableBody) return;
 
-    const startIndex = (currentPage - 1) * SALES_PER_PAGE;
-    const endIndex = startIndex + SALES_PER_PAGE;
-    const ventasPagina = filteredVentas.slice(startIndex, endIndex);
+  const startIndex = (currentPage - 1) * SALES_PER_PAGE;
+  const endIndex = startIndex + SALES_PER_PAGE;
+  const ventasPagina = filteredVentas.slice(startIndex, endIndex);
 
-    // Usar DocumentFragment para mejor rendimiento
-    const fragment = document.createDocumentFragment();
+  // Usar DocumentFragment para mejor rendimiento
+  const fragment = document.createDocumentFragment();
 
-    if (ventasPagina.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="9" class="py-4 text-center">No se encontraron ventas</td>';
-        fragment.appendChild(row);
-    } else {
-        ventasPagina.forEach(venta => {
-            const row = createVentaRow(venta);
-            fragment.appendChild(row);
-        });
-    }
+  if (ventasPagina.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="9" class="py-4 text-center">No se encontraron ventas</td>';
+    fragment.appendChild(row);
+  } else {
+    ventasPagina.forEach(venta => {
+      const row = createVentaRow(venta);
+      fragment.appendChild(row);
+    });
+  }
 
-    // Actualizar DOM una sola vez
-    tableBody.innerHTML = '';
-    tableBody.appendChild(fragment);
+  // Actualizar DOM una sola vez
+  tableBody.innerHTML = '';
+  tableBody.appendChild(fragment);
 
-    // Configurar eventos usando delegación
-    setupSaleEventsOptimized();
+  // Configurar eventos usando delegación
+  setupSaleEventsOptimized();
 }
 
 // Configurar eventos optimizados usando delegación
 function setupSaleEventsOptimized() {
-    const tableBody = document.getElementById('ventasTableBody');
-    if (!tableBody) return;
+  const tableBody = document.getElementById('ventasTableBody');
+  if (!tableBody) return;
 
-    // Remover listeners anteriores
-    tableBody.removeEventListener('click', handleTableClick);
-    
-    // Agregar listener único usando delegación de eventos
-    tableBody.addEventListener('click', handleTableClick);
+  // Remover listeners anteriores
+  tableBody.removeEventListener('click', handleTableClick);
+
+  // Agregar listener único usando delegación de eventos
+  tableBody.addEventListener('click', handleTableClick);
 }
 
 // Manejar clicks en la tabla usando delegación
 function handleTableClick(event) {
-    const button = event.target.closest('button');
-    if (!button) return;
+  const button = event.target.closest('button');
+  if (!button) return;
 
-    const saleId = button.getAttribute('data-id');
-    const clienteId = button.getAttribute('data-cliente');
+  const saleId = button.getAttribute('data-id');
+  const clienteId = button.getAttribute('data-cliente');
 
-    if (button.classList.contains('view-sale')) {
-        viewSale(saleId);
-    } else if (button.classList.contains('add-payment')) {
-        addPayment(saleId, clienteId);
-    } else if (button.classList.contains('cancel-sale')) {
-        confirmCancelSale(saleId);
-    }
+  if (button.classList.contains('view-sale')) {
+    viewSale(saleId);
+  } else if (button.classList.contains('add-payment')) {
+    addPayment(saleId, clienteId);
+  } else if (button.classList.contains('cancel-sale')) {
+    confirmCancelSale(saleId);
+  }
 }
 
 // Crear fila de venta optimizada
 function createVentaRow(venta) {
-    let fechaText = 'No disponible';
-    if (venta.fecha) {
-        const fecha = venta.fecha instanceof Timestamp
-            ? venta.fecha.toDate()
-            : new Date(venta.fecha);
-        fechaText = fecha.toLocaleDateString();
-    }
+  let fechaText = 'No disponible';
+  if (venta.fecha) {
+    const fecha = venta.fecha instanceof Timestamp
+      ? venta.fecha.toDate()
+      : new Date(venta.fecha);
+    fechaText = fecha.toLocaleDateString();
+  }
 
-    // Obtener nombre del cliente usando cache
-    let clienteText = 'Venta de mostrador';
-    if (venta.clienteId) {
-        const cliente = clientesCache.get(venta.clienteId) || clientes.find(c => c.id === venta.clienteId);
-        clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
-    }
+  // Obtener nombre del cliente usando cache
+  let clienteText = 'Venta de mostrador';
+  if (venta.clienteId) {
+    const cliente = clientesCache.get(venta.clienteId) || clientes.find(c => c.id === venta.clienteId);
+    clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
+  }
 
-    const row = document.createElement('tr');
-    row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+  const row = document.createElement('tr');
+  row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
 
-    row.innerHTML = `
+  row.innerHTML = `
       <td class="py-3 px-4 font-mono text-sm">${venta.id.substring(0, 8)}...</td>
       <td class="py-3 px-4">${fechaText}</td>
       <td class="py-3 px-4">${clienteText}</td>
@@ -1716,9 +1731,9 @@ function createVentaRow(venta) {
       </td>
       <td class="py-3 px-4">
         ${venta.convenio ?
-        '<span class="badge badge-success">Sí</span>' :
-        '<span class="badge badge-secondary">No</span>'
-      }
+      '<span class="badge badge-success">Sí</span>' :
+      '<span class="badge badge-secondary">No</span>'
+    }
       </td>
       <td class="py-3 px-4">
         <div class="flex space-x-1">
@@ -1742,52 +1757,52 @@ function createVentaRow(venta) {
       </td>
     `;
 
-    return row;
+  return row;
 }
 
 // Obtener texto del estado
 function getEstadoText(estado) {
-    const estados = {
-        'pendiente': 'Pendiente',
-        'parcial': 'Abonado',
-        'pagada': 'Pagado',
-        'cancelada': 'Cancelado'
-    };
-    return estados[estado] || 'Desconocido';
+  const estados = {
+    'pendiente': 'Pendiente',
+    'parcial': 'Abonado',
+    'pagada': 'Pagado',
+    'cancelada': 'Cancelado'
+  };
+  return estados[estado] || 'Desconocido';
 }
 
 // Función para ver una venta
 async function viewSale(saleId) {
-    try {
-        const docRef = doc(db, 'ventas', saleId);
-        const docSnap = await getDoc(docRef);
+  try {
+    const docRef = doc(db, 'ventas', saleId);
+    const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
-            const venta = docSnap.data();
-            currentSale = {
-                id: saleId,
-                ...venta
-            };
+    if (docSnap.exists()) {
+      const venta = docSnap.data();
+      currentSale = {
+        id: saleId,
+        ...venta
+      };
 
-            await showSaleDetailModal(currentSale);
-        } else {
-            showToast('No se encontró la venta', 'danger');
-        }
-    } catch (error) {
-        console.error("Error al obtener venta:", error);
-        showToast('Error al obtener la venta', 'danger');
+      await showSaleDetailModal(currentSale);
+    } else {
+      showToast('No se encontró la venta', 'danger');
     }
+  } catch (error) {
+    console.error("Error al obtener venta:", error);
+    showToast('Error al obtener la venta', 'danger');
+  }
 }
 
 // Mostrar modal de detalle de venta
 async function showSaleDetailModal(venta) {
-    let saleDetailModal = document.getElementById('saleDetailModal');
-    if (!saleDetailModal) {
-        saleDetailModal = document.createElement('div');
-        saleDetailModal.id = 'saleDetailModal';
-        saleDetailModal.className = 'modal';
+  let saleDetailModal = document.getElementById('saleDetailModal');
+  if (!saleDetailModal) {
+    saleDetailModal = document.createElement('div');
+    saleDetailModal.id = 'saleDetailModal';
+    saleDetailModal.className = 'modal';
 
-        saleDetailModal.innerHTML = `
+    saleDetailModal.innerHTML = `
             <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
                 <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
                     <h3 class="text-xl font-semibold">Detalle de Venta</h3>
@@ -1905,105 +1920,105 @@ async function showSaleDetailModal(venta) {
             </div>
         `;
 
-        document.body.appendChild(saleDetailModal);
-        setupSaleDetailModalEvents(saleDetailModal);
-    }
+    document.body.appendChild(saleDetailModal);
+    setupSaleDetailModalEvents(saleDetailModal);
+  }
 
-    saleDetailModal.style.display = 'block';
-    await populateSaleDetailModal(venta);
+  saleDetailModal.style.display = 'block';
+  await populateSaleDetailModal(venta);
 }
 
 // Configurar eventos del modal de detalle
 function setupSaleDetailModalEvents(modal) {
-    const closeBtn = modal.querySelector('.close');
-    const detailCloseBtn = document.getElementById('detailCloseBtn');
-    const detailPrintBtn = document.getElementById('detailPrintBtn');
-    const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
+  const closeBtn = modal.querySelector('.close');
+  const detailCloseBtn = document.getElementById('detailCloseBtn');
+  const detailPrintBtn = document.getElementById('detailPrintBtn');
+  const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
-
-    if (detailCloseBtn) {
-        detailCloseBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
-
-    if (detailPrintBtn) {
-        detailPrintBtn.addEventListener('click', () => {
-            window.print();
-        });
-    }
-
-    if (detailAddPaymentBtn) {
-        detailAddPaymentBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-            addPayment(currentSale.id, currentSale.clienteId);
-        });
-    }
-
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
     });
+  }
+
+  if (detailCloseBtn) {
+    detailCloseBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
+
+  if (detailPrintBtn) {
+    detailPrintBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  if (detailAddPaymentBtn) {
+    detailAddPaymentBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      addPayment(currentSale.id, currentSale.clienteId);
+    });
+  }
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
 }
 
 // Llenar información del modal de detalle
 async function populateSaleDetailModal(venta) {
-    document.getElementById('detailSaleId').textContent = venta.id;
+  document.getElementById('detailSaleId').textContent = venta.id;
 
-    let fechaText = 'No disponible';
-    if (venta.fecha) {
-        const fecha = venta.fecha instanceof Timestamp
-            ? venta.fecha.toDate()
-            : new Date(venta.fecha);
-        fechaText = fecha.toLocaleDateString();
-    }
-    document.getElementById('detailSaleDate').textContent = fechaText;
+  let fechaText = 'No disponible';
+  if (venta.fecha) {
+    const fecha = venta.fecha instanceof Timestamp
+      ? venta.fecha.toDate()
+      : new Date(venta.fecha);
+    fechaText = fecha.toLocaleDateString();
+  }
+  document.getElementById('detailSaleDate').textContent = fechaText;
 
-    let clienteText = 'Venta de mostrador';
-    if (venta.clienteId) {
-        const cliente = clientesCache.get(venta.clienteId) || clientes.find(c => c.id === venta.clienteId);
-        clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
-    }
-    document.getElementById('detailSaleClient').textContent = clienteText;
+  let clienteText = 'Venta de mostrador';
+  if (venta.clienteId) {
+    const cliente = clientesCache.get(venta.clienteId) || clientes.find(c => c.id === venta.clienteId);
+    clienteText = cliente ? cliente.nombre : 'Cliente no encontrado';
+  }
+  document.getElementById('detailSaleClient').textContent = clienteText;
 
-    const estadoElement = document.getElementById('detailSaleStatus');
-    estadoElement.textContent = getEstadoText(venta.estado);
-    estadoElement.className = `status-${venta.estado}`;
+  const estadoElement = document.getElementById('detailSaleStatus');
+  estadoElement.textContent = getEstadoText(venta.estado);
+  estadoElement.className = `status-${venta.estado}`;
 
-    const convenioContainer = document.getElementById('detailConvenioContainer');
-    const empresaContainer = document.getElementById('detailEmpresaContainer');
+  const convenioContainer = document.getElementById('detailConvenioContainer');
+  const empresaContainer = document.getElementById('detailEmpresaContainer');
 
-    if (venta.convenio) {
-        document.getElementById('detailSaleConvenio').textContent = 'Sí';
-        convenioContainer.style.display = 'block';
+  if (venta.convenio) {
+    document.getElementById('detailSaleConvenio').textContent = 'Sí';
+    convenioContainer.style.display = 'block';
 
-        if (venta.empresaId) {
-            const empresa = empresas.find(e => e.id === venta.empresaId);
-            document.getElementById('detailSaleEmpresa').textContent = empresa ? empresa.nombre : 'Empresa no encontrada';
-            empresaContainer.style.display = 'block';
-        } else {
-            empresaContainer.style.display = 'none';
-        }
+    if (venta.empresaId) {
+      const empresa = empresas.find(e => e.id === venta.empresaId);
+      document.getElementById('detailSaleEmpresa').textContent = empresa ? empresa.nombre : 'Empresa no encontrada';
+      empresaContainer.style.display = 'block';
     } else {
-        convenioContainer.style.display = 'none';
-        empresaContainer.style.display = 'none';
+      empresaContainer.style.display = 'none';
     }
+  } else {
+    convenioContainer.style.display = 'none';
+    empresaContainer.style.display = 'none';
+  }
 
-    const productsBody = document.getElementById('detailProductsBody');
-    productsBody.innerHTML = '';
+  const productsBody = document.getElementById('detailProductsBody');
+  productsBody.innerHTML = '';
 
-    if (venta.productos && venta.productos.length > 0) {
-        venta.productos.forEach(producto => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+  if (venta.productos && venta.productos.length > 0) {
+    venta.productos.forEach(producto => {
+      const row = document.createElement('tr');
+      row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
 
-            row.innerHTML = `
+      row.innerHTML = `
                 <td class="py-2 px-4">${producto.nombreProducto}</td>
                 <td class="py-2 px-4">${producto.cantidad}</td>
                 <td class="py-2 px-4">$${producto.precio.toFixed(2)}</td>
@@ -2011,170 +2026,170 @@ async function populateSaleDetailModal(venta) {
                 <td class="py-2 px-4">$${producto.subtotal.toFixed(2)}</td>
             `;
 
-            productsBody.appendChild(row);
-        });
-    } else {
-        productsBody.innerHTML = '<tr><td colspan="5" class="py-2 px-4 text-center">No hay productos registrados</td></tr>';
-    }
+      productsBody.appendChild(row);
+    });
+  } else {
+    productsBody.innerHTML = '<tr><td colspan="5" class="py-2 px-4 text-center">No hay productos registrados</td></tr>';
+  }
 
-    document.getElementById('detailSaleTotal').textContent = `$${venta.total.toFixed(2)}`;
+  document.getElementById('detailSaleTotal').textContent = `$${venta.total.toFixed(2)}`;
 
-    await loadSalePayments(venta.id);
+  await loadSalePayments(venta.id);
 
-    const observacionesContainer = document.getElementById('detailObservacionesContainer');
-    const observacionesElement = document.getElementById('detailSaleObservaciones');
+  const observacionesContainer = document.getElementById('detailObservacionesContainer');
+  const observacionesElement = document.getElementById('detailSaleObservaciones');
 
-    if (venta.observaciones) {
-        observacionesElement.textContent = venta.observaciones;
-        observacionesContainer.style.display = 'block';
-    } else {
-        observacionesContainer.style.display = 'none';
-    }
+  if (venta.observaciones) {
+    observacionesElement.textContent = venta.observaciones;
+    observacionesContainer.style.display = 'block';
+  } else {
+    observacionesContainer.style.display = 'none';
+  }
 }
 
 // Cargar pagos de una venta
 async function loadSalePayments(ventaId) {
-    const paymentsBody = document.getElementById('detailPaymentsBody');
-    paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center"><div class="spinner mr-2"></div>Cargando pagos...</td></tr>';
+  const paymentsBody = document.getElementById('detailPaymentsBody');
+  paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center"><div class="spinner mr-2"></div>Cargando pagos...</td></tr>';
 
-    try {
-        const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
-            getDoc(doc(db, 'ventas', ventaId)),
-            getDocs(query(collection(db, 'abonos'), where('ventaId', '==', ventaId), orderBy('fecha', 'asc'))),
-            getDocs(query(collection(db, 'pagos'), where('ventaId', '==', ventaId), orderBy('fecha', 'asc')))
-        ]);
+  try {
+    const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
+      getDoc(doc(db, 'ventas', ventaId)),
+      getDocs(query(collection(db, 'abonos'), where('ventaId', '==', ventaId), orderBy('fecha', 'asc'))),
+      getDocs(query(collection(db, 'pagos'), where('ventaId', '==', ventaId), orderBy('fecha', 'asc')))
+    ]);
 
-        const venta = ventaDoc.data();
-        const pagos = [];
-        let totalAbonado = 0;
-        let totalPagado = 0;
+    const venta = ventaDoc.data();
+    const pagos = [];
+    let totalAbonado = 0;
+    let totalPagado = 0;
 
-        if (venta.abono > 0) {
-            pagos.push({
-                tipo: 'abono',
-                fecha: venta.fecha,
-                descripcion: 'Abono inicial',
-                monto: venta.abono
-            });
-            totalAbonado += venta.abono;
-        }
+    if (venta.abono > 0) {
+      pagos.push({
+        tipo: 'abono',
+        fecha: venta.fecha,
+        descripcion: 'Abono inicial',
+        monto: venta.abono
+      });
+      totalAbonado += venta.abono;
+    }
 
-        abonosSnapshot.forEach(doc => {
-            const abono = doc.data();
-            if (abono.descripcion !== 'Abono inicial') {
-                pagos.push({
-                    tipo: 'abono',
-                    fecha: abono.fecha,
-                    descripcion: abono.descripcion || 'Abono',
-                    monto: abono.monto
-                });
-                totalAbonado += abono.monto;
-            }
+    abonosSnapshot.forEach(doc => {
+      const abono = doc.data();
+      if (abono.descripcion !== 'Abono inicial') {
+        pagos.push({
+          tipo: 'abono',
+          fecha: abono.fecha,
+          descripcion: abono.descripcion || 'Abono',
+          monto: abono.monto
         });
+        totalAbonado += abono.monto;
+      }
+    });
 
-        pagosSnapshot.forEach(doc => {
-            const pago = doc.data();
-            pagos.push({
-                tipo: 'pago',
-                fecha: pago.fecha,
-                descripcion: pago.descripcion || 'Pago',
-                monto: pago.monto
-            });
-            totalPagado += pago.monto;
-        });
+    pagosSnapshot.forEach(doc => {
+      const pago = doc.data();
+      pagos.push({
+        tipo: 'pago',
+        fecha: pago.fecha,
+        descripcion: pago.descripcion || 'Pago',
+        monto: pago.monto
+      });
+      totalPagado += pago.monto;
+    });
 
-        pagos.sort((a, b) => {
-            const fechaA = a.fecha instanceof Timestamp ? a.fecha.toDate() : new Date(a.fecha);
-            const fechaB = b.fecha instanceof Timestamp ? b.fecha.toDate() : new Date(b.fecha);
-            return fechaA - fechaB;
-        });
+    pagos.sort((a, b) => {
+      const fechaA = a.fecha instanceof Timestamp ? a.fecha.toDate() : new Date(a.fecha);
+      const fechaB = b.fecha instanceof Timestamp ? b.fecha.toDate() : new Date(b.fecha);
+      return fechaA - fechaB;
+    });
 
-        paymentsBody.innerHTML = '';
+    paymentsBody.innerHTML = '';
 
-        if (pagos.length > 0) {
-            pagos.forEach(pago => {
-                const fechaText = pago.fecha instanceof Timestamp
-                    ? pago.fecha.toDate().toLocaleDateString()
-                    : new Date(pago.fecha).toLocaleDateString();
+    if (pagos.length > 0) {
+      pagos.forEach(pago => {
+        const fechaText = pago.fecha instanceof Timestamp
+          ? pago.fecha.toDate().toLocaleDateString()
+          : new Date(pago.fecha).toLocaleDateString();
 
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
 
-                row.innerHTML = `
+        row.innerHTML = `
                     <td class="py-2 px-4">${fechaText}</td>
                     <td class="py-2 px-4">${pago.tipo === 'abono' ? 'Abono' : 'Pago'}</td>
                     <td class="py-2 px-4">${pago.descripcion}</td>
                     <td class="py-2 px-4 ${pago.tipo === 'abono' ? 'text-green-500' : 'text-blue-500'}">$${pago.monto.toFixed(2)}</td>
                 `;
 
-                paymentsBody.appendChild(row);
-            });
-        } else {
-            paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">No hay pagos registrados</td></tr>';
-        }
-
-        const saldoPendiente = venta.total - totalAbonado - totalPagado;
-        const saldoElement = document.getElementById('detailSalePending');
-        saldoElement.textContent = `$${saldoPendiente.toFixed(2)}`;
-        saldoElement.className = saldoPendiente > 0 ? 'text-red-500' : 'text-green-500';
-
-        const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
-        if (detailAddPaymentBtn) {
-            if (saldoPendiente > 0 && venta.estado !== 'cancelada') {
-                detailAddPaymentBtn.style.display = 'flex';
-            } else {
-                detailAddPaymentBtn.style.display = 'none';
-            }
-        }
-
-    } catch (error) {
-        console.error("Error al cargar pagos:", error);
-        paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center text-red-500">Error al cargar pagos</td></tr>';
+        paymentsBody.appendChild(row);
+      });
+    } else {
+      paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center">No hay pagos registrados</td></tr>';
     }
+
+    const saldoPendiente = venta.total - totalAbonado - totalPagado;
+    const saldoElement = document.getElementById('detailSalePending');
+    saldoElement.textContent = `$${saldoPendiente.toFixed(2)}`;
+    saldoElement.className = saldoPendiente > 0 ? 'text-red-500' : 'text-green-500';
+
+    const detailAddPaymentBtn = document.getElementById('detailAddPaymentBtn');
+    if (detailAddPaymentBtn) {
+      if (saldoPendiente > 0 && venta.estado !== 'cancelada') {
+        detailAddPaymentBtn.style.display = 'flex';
+      } else {
+        detailAddPaymentBtn.style.display = 'none';
+      }
+    }
+
+  } catch (error) {
+    console.error("Error al cargar pagos:", error);
+    paymentsBody.innerHTML = '<tr><td colspan="4" class="py-2 px-4 text-center text-red-500">Error al cargar pagos</td></tr>';
+  }
 }
 
 // Función para agregar un pago
 async function addPayment(ventaId, clienteId) {
-    try {
-        const docRef = doc(db, 'ventas', ventaId);
-        const docSnap = await getDoc(docRef);
+  try {
+    const docRef = doc(db, 'ventas', ventaId);
+    const docSnap = await getDoc(docRef);
 
-        if (!docSnap.exists()) {
-            showToast('No se encontró la venta', 'danger');
-            return;
-        }
-
-        const venta = docSnap.data();
-
-        if (!venta.clienteId) {
-            showToast('No se pueden realizar abonos en ventas de mostrador', 'warning');
-            return;
-        }
-
-        const saldoInfo = await calcularSaldoPendiente(ventaId);
-
-        if (saldoInfo.saldoPendiente <= 0) {
-            showToast('Esta venta ya está completamente pagada', 'info');
-            return;
-        }
-
-        await showPaymentModal(ventaId, clienteId, saldoInfo);
-
-    } catch (error) {
-        console.error("Error al preparar formulario de pago:", error);
-        showToast('Error al preparar formulario de pago', 'danger');
+    if (!docSnap.exists()) {
+      showToast('No se encontró la venta', 'danger');
+      return;
     }
+
+    const venta = docSnap.data();
+
+    if (!venta.clienteId) {
+      showToast('No se pueden realizar abonos en ventas de mostrador', 'warning');
+      return;
+    }
+
+    const saldoInfo = await calcularSaldoPendiente(ventaId);
+
+    if (saldoInfo.saldoPendiente <= 0) {
+      showToast('Esta venta ya está completamente pagada', 'info');
+      return;
+    }
+
+    await showPaymentModal(ventaId, clienteId, saldoInfo);
+
+  } catch (error) {
+    console.error("Error al preparar formulario de pago:", error);
+    showToast('Error al preparar formulario de pago', 'danger');
+  }
 }
 
 // Mostrar modal de pago
 async function showPaymentModal(ventaId, clienteId, saldoInfo) {
-    let paymentModal = document.getElementById('paymentModal');
-    if (!paymentModal) {
-        paymentModal = document.createElement('div');
-        paymentModal.id = 'paymentModal';
-        paymentModal.className = 'modal';
+  let paymentModal = document.getElementById('paymentModal');
+  if (!paymentModal) {
+    paymentModal = document.createElement('div');
+    paymentModal.id = 'paymentModal';
+    paymentModal.className = 'modal';
 
-        paymentModal.innerHTML = `
+    paymentModal.innerHTML = `
             <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
                 <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
                     <h3 class="text-xl font-semibold">Registrar Pago</h3>
@@ -2226,304 +2241,304 @@ async function showPaymentModal(ventaId, clienteId, saldoInfo) {
             </div>
         `;
 
-        document.body.appendChild(paymentModal);
-        setupPaymentModalEvents(paymentModal);
-    }
+    document.body.appendChild(paymentModal);
+    setupPaymentModalEvents(paymentModal);
+  }
 
-    paymentModal.style.display = 'block';
+  paymentModal.style.display = 'block';
 
-    document.getElementById('paymentVentaId').value = ventaId;
-    document.getElementById('paymentClienteId').value = clienteId || '';
-    document.getElementById('paymentSaldoPendiente').textContent = `$${saldoInfo.saldoPendiente.toFixed(2)}`;
+  document.getElementById('paymentVentaId').value = ventaId;
+  document.getElementById('paymentClienteId').value = clienteId || '';
+  document.getElementById('paymentSaldoPendiente').textContent = `$${saldoInfo.saldoPendiente.toFixed(2)}`;
 
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    document.getElementById('paymentFecha').value = `${year}-${month}-${day}`;
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  document.getElementById('paymentFecha').value = `${year}-${month}-${day}`;
 
-    document.getElementById('paymentTipo').value = 'abono';
-    document.getElementById('paymentMonto').value = '';
-    document.getElementById('paymentMetodo').value = 'efectivo';
-    document.getElementById('paymentDescripcion').value = '';
+  document.getElementById('paymentTipo').value = 'abono';
+  document.getElementById('paymentMonto').value = '';
+  document.getElementById('paymentMetodo').value = 'efectivo';
+  document.getElementById('paymentDescripcion').value = '';
 }
 
 // Configurar eventos del modal de pago
 function setupPaymentModalEvents(modal) {
-    const closeBtn = modal.querySelector('.close');
-    const closeModalBtn = modal.querySelector('.close-modal');
-    const paymentForm = document.getElementById('paymentForm');
-    const paymentTipo = document.getElementById('paymentTipo');
-    const paymentMonto = document.getElementById('paymentMonto');
+  const closeBtn = modal.querySelector('.close');
+  const closeModalBtn = modal.querySelector('.close-modal');
+  const paymentForm = document.getElementById('paymentForm');
+  const paymentTipo = document.getElementById('paymentTipo');
+  const paymentMonto = document.getElementById('paymentMonto');
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
-
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
-
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
     });
+  }
 
-    if (paymentTipo && paymentMonto) {
-        paymentTipo.addEventListener('change', async () => {
-            const tipo = paymentTipo.value;
-            const ventaId = document.getElementById('paymentVentaId').value;
+  if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
 
-            if (tipo === 'pago') {
-                const saldoInfo = await calcularSaldoPendiente(ventaId);
-                paymentMonto.value = saldoInfo.saldoPendiente.toFixed(2);
-            } else {
-                paymentMonto.value = '';
-            }
-        });
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      modal.style.display = 'none';
     }
+  });
 
-    if (paymentForm) {
-        paymentForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handlePaymentSubmit(modal);
-        });
-    }
+  if (paymentTipo && paymentMonto) {
+    paymentTipo.addEventListener('change', async () => {
+      const tipo = paymentTipo.value;
+      const ventaId = document.getElementById('paymentVentaId').value;
+
+      if (tipo === 'pago') {
+        const saldoInfo = await calcularSaldoPendiente(ventaId);
+        paymentMonto.value = saldoInfo.saldoPendiente.toFixed(2);
+      } else {
+        paymentMonto.value = '';
+      }
+    });
+  }
+
+  if (paymentForm) {
+    paymentForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await handlePaymentSubmit(modal);
+    });
+  }
 }
 
 // Manejar envío del formulario de pago
 async function handlePaymentSubmit(modal) {
-    try {
-        const ventaId = document.getElementById('paymentVentaId').value;
-        const clienteId = document.getElementById('paymentClienteId').value;
-        const tipo = document.getElementById('paymentTipo').value;
-        const monto = parseFloat(document.getElementById('paymentMonto').value) || 0;
-        const metodo = document.getElementById('paymentMetodo').value;
-        const fecha = document.getElementById('paymentFecha').value;
-        const descripcion = document.getElementById('paymentDescripcion').value;
+  try {
+    const ventaId = document.getElementById('paymentVentaId').value;
+    const clienteId = document.getElementById('paymentClienteId').value;
+    const tipo = document.getElementById('paymentTipo').value;
+    const monto = parseFloat(document.getElementById('paymentMonto').value) || 0;
+    const metodo = document.getElementById('paymentMetodo').value;
+    const fecha = document.getElementById('paymentFecha').value;
+    const descripcion = document.getElementById('paymentDescripcion').value;
 
-        if (monto <= 0) {
-            showToast('El monto debe ser mayor a cero', 'warning');
-            return;
-        }
-
-        const saldoInfo = await calcularSaldoPendiente(ventaId);
-        if (monto > saldoInfo.saldoPendiente) {
-            showToast('El monto no puede ser mayor al saldo pendiente', 'warning');
-            return;
-        }
-
-        const confirmMessage = `¿Confirmar ${tipo} de $${monto.toFixed(2)}?`;
-
-        showCustomAlert(
-            'Confirmar Pago',
-            confirmMessage,
-            'info',
-            async () => {
-                await processPayment({
-                    ventaId,
-                    clienteId,
-                    tipo,
-                    monto,
-                    metodo,
-                    fecha: fecha ? new Date(fecha) : new Date(),
-                    descripcion: descripcion || (tipo === 'abono' ? 'Abono' : 'Pago'),
-                    modal
-                });
-            }
-        );
-
-    } catch (error) {
-        console.error('Error al procesar pago:', error);
-        showToast('Error al procesar el pago', 'danger');
+    if (monto <= 0) {
+      showToast('El monto debe ser mayor a cero', 'warning');
+      return;
     }
+
+    const saldoInfo = await calcularSaldoPendiente(ventaId);
+    if (monto > saldoInfo.saldoPendiente) {
+      showToast('El monto no puede ser mayor al saldo pendiente', 'warning');
+      return;
+    }
+
+    const confirmMessage = `¿Confirmar ${tipo} de $${monto.toFixed(2)}?`;
+
+    showCustomAlert(
+      'Confirmar Pago',
+      confirmMessage,
+      'info',
+      async () => {
+        await processPayment({
+          ventaId,
+          clienteId,
+          tipo,
+          monto,
+          metodo,
+          fecha: fecha ? new Date(fecha) : new Date(),
+          descripcion: descripcion || (tipo === 'abono' ? 'Abono' : 'Pago'),
+          modal
+        });
+      }
+    );
+
+  } catch (error) {
+    console.error('Error al procesar pago:', error);
+    showToast('Error al procesar el pago', 'danger');
+  }
 }
 
 // Procesar pago
 async function processPayment(paymentData) {
-    try {
-        const { ventaId, clienteId, tipo, monto, metodo, fecha, descripcion, modal } = paymentData;
+  try {
+    const { ventaId, clienteId, tipo, monto, metodo, fecha, descripcion, modal } = paymentData;
 
-        if (tipo === 'abono') {
-            await registrarAbono(ventaId, clienteId, monto, descripcion, metodo, fecha);
-        } else {
-            await registrarPago(ventaId, clienteId, monto, descripcion, metodo, fecha);
-        }
-
-        const nuevoSaldoInfo = await calcularSaldoPendiente(ventaId);
-        let nuevoEstado = 'pendiente';
-
-        if (nuevoSaldoInfo.saldoPendiente <= 0) {
-            nuevoEstado = 'pagada';
-        } else if (nuevoSaldoInfo.totalAbonado > 0) {
-            nuevoEstado = 'parcial';
-        }
-
-        await updateDoc(doc(db, 'ventas', ventaId), {
-            estado: nuevoEstado,
-            updatedAt: serverTimestamp()
-        });
-
-        showToast(`${tipo === 'abono' ? 'Abono' : 'Pago'} registrado correctamente`, 'success');
-
-        modal.style.display = 'none';
-        
-        // Limpiar cache y recargar
-        saldoCache.delete(ventaId);
-        await loadVentas();
-
-    } catch (error) {
-        console.error(`Error al registrar ${tipo}:`, error);
-        showToast(`Error al registrar ${tipo}`, 'danger');
+    if (tipo === 'abono') {
+      await registrarAbono(ventaId, clienteId, monto, descripcion, metodo, fecha);
+    } else {
+      await registrarPago(ventaId, clienteId, monto, descripcion, metodo, fecha);
     }
+
+    const nuevoSaldoInfo = await calcularSaldoPendiente(ventaId);
+    let nuevoEstado = 'pendiente';
+
+    if (nuevoSaldoInfo.saldoPendiente <= 0) {
+      nuevoEstado = 'pagada';
+    } else if (nuevoSaldoInfo.totalAbonado > 0) {
+      nuevoEstado = 'parcial';
+    }
+
+    await updateDoc(doc(db, 'ventas', ventaId), {
+      estado: nuevoEstado,
+      updatedAt: serverTimestamp()
+    });
+
+    showToast(`${tipo === 'abono' ? 'Abono' : 'Pago'} registrado correctamente`, 'success');
+
+    modal.style.display = 'none';
+
+    // Limpiar cache y recargar
+    saldoCache.delete(ventaId);
+    await loadVentas();
+
+  } catch (error) {
+    console.error(`Error al registrar ${tipo}:`, error);
+    showToast(`Error al registrar ${tipo}`, 'danger');
+  }
 }
 
 // Función para registrar un pago
 async function registrarPago(ventaId, clienteId, monto, descripcion = 'Pago', metodoPago = 'efectivo', fecha = new Date()) {
-    try {
-        const pagoData = {
-            ventaId,
-            clienteId: clienteId || null,
-            monto,
-            descripcion,
-            metodoPago,
-            fecha: fecha,
-            createdAt: serverTimestamp()
-        };
+  try {
+    const pagoData = {
+      ventaId,
+      clienteId: clienteId || null,
+      monto,
+      descripcion,
+      metodoPago,
+      fecha: fecha,
+      createdAt: serverTimestamp()
+    };
 
-        const pagoRef = await addDoc(collection(db, 'pagos'), pagoData);
+    const pagoRef = await addDoc(collection(db, 'pagos'), pagoData);
 
-        if (clienteId) {
-            await updateDoc(doc(db, 'clientes', clienteId), {
-                ultimaVisita: serverTimestamp()
-            });
-        }
-
-        return pagoRef.id;
-    } catch (error) {
-        console.error("Error al registrar pago:", error);
-        throw error;
+    if (clienteId) {
+      await updateDoc(doc(db, 'clientes', clienteId), {
+        ultimaVisita: serverTimestamp()
+      });
     }
+
+    return pagoRef.id;
+  } catch (error) {
+    console.error("Error al registrar pago:", error);
+    throw error;
+  }
 }
 
 // Función para confirmar cancelación de venta
 function confirmCancelSale(saleId) {
-    showCustomAlert(
-        'Cancelar Venta',
-        '¿Estás seguro de que deseas cancelar esta venta? Esta acción no se puede deshacer.',
-        'danger',
-        () => {
-            cancelSale(saleId);
-        }
-    );
+  showCustomAlert(
+    'Cancelar Venta',
+    '¿Estás seguro de que deseas cancelar esta venta? Esta acción no se puede deshacer.',
+    'danger',
+    () => {
+      cancelSale(saleId);
+    }
+  );
 }
 
 // Función para cancelar una venta
 async function cancelSale(saleId) {
-    try {
-        await updateDoc(doc(db, 'ventas', saleId), {
-            estado: 'cancelada',
-            updatedAt: serverTimestamp()
-        });
+  try {
+    await updateDoc(doc(db, 'ventas', saleId), {
+      estado: 'cancelada',
+      updatedAt: serverTimestamp()
+    });
 
-        showToast('Venta cancelada correctamente', 'success');
-        
-        // Limpiar cache y recargar
-        saldoCache.delete(saleId);
-        await loadVentas();
-    } catch (error) {
-        console.error("Error al cancelar venta:", error);
-        showToast('Error al cancelar la venta', 'danger');
-    }
+    showToast('Venta cancelada correctamente', 'success');
+
+    // Limpiar cache y recargar
+    saldoCache.delete(saleId);
+    await loadVentas();
+  } catch (error) {
+    console.error("Error al cancelar venta:", error);
+    showToast('Error al cancelar la venta', 'danger');
+  }
 }
 
 // Función corregida para calcular saldo pendiente
 async function calcularSaldoPendiente(ventaId) {
-    // Verificar cache primero
-    const cached = saldoCache.get(ventaId);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        return cached.data;
+  // Verificar cache primero
+  const cached = saldoCache.get(ventaId);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+
+  try {
+    const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
+      getDoc(doc(db, 'ventas', ventaId)),
+      getDocs(query(collection(db, 'abonos'), where('ventaId', '==', ventaId))),
+      getDocs(query(collection(db, 'pagos'), where('ventaId', '==', ventaId)))
+    ]);
+
+    if (!ventaDoc.exists()) {
+      throw new Error('La venta no existe');
     }
 
-    try {
-        const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
-            getDoc(doc(db, 'ventas', ventaId)),
-            getDocs(query(collection(db, 'abonos'), where('ventaId', '==', ventaId))),
-            getDocs(query(collection(db, 'pagos'), where('ventaId', '==', ventaId)))
-        ]);
+    const venta = ventaDoc.data();
+    const total = venta.total;
 
-        if (!ventaDoc.exists()) {
-            throw new Error('La venta no existe');
-        }
+    // CORREGIDO: Para convenios, considerar el abono inicial como pago completo
+    let totalAbonado = 0;
+    let totalPagado = venta.abono || 0; // El abono inicial se considera como pago
 
-        const venta = ventaDoc.data();
-        const total = venta.total;
+    // Solo sumar abonos adicionales (no el inicial)
+    abonosSnapshot.forEach(doc => {
+      const abono = doc.data();
+      if (abono.descripcion !== 'Abono inicial' && abono.descripcion !== 'Pago con crédito de convenio') {
+        totalAbonado += abono.monto;
+      }
+    });
 
-        // CORREGIDO: Para convenios, considerar el abono inicial como pago completo
-        let totalAbonado = 0;
-        let totalPagado = venta.abono || 0; // El abono inicial se considera como pago
+    // Sumar pagos adicionales
+    pagosSnapshot.forEach(doc => {
+      const pago = doc.data();
+      if (pago.descripcion !== 'Pago con crédito de convenio') {
+        totalPagado += pago.monto;
+      }
+    });
 
-        // Solo sumar abonos adicionales (no el inicial)
-        abonosSnapshot.forEach(doc => {
-            const abono = doc.data();
-            if (abono.descripcion !== 'Abono inicial' && abono.descripcion !== 'Pago con crédito de convenio') {
-                totalAbonado += abono.monto;
-            }
-        });
+    // CORREGIDO: Para convenios, el saldo pendiente siempre debe ser 0 si se pagó con crédito
+    let saldoPendiente = Math.max(0, total - totalAbonado - totalPagado);
 
-        // Sumar pagos adicionales
-        pagosSnapshot.forEach(doc => {
-            const pago = doc.data();
-            if (pago.descripcion !== 'Pago con crédito de convenio') {
-                totalPagado += pago.monto;
-            }
-        });
-
-        // CORREGIDO: Para convenios, el saldo pendiente siempre debe ser 0 si se pagó con crédito
-        let saldoPendiente = Math.max(0, total - totalAbonado - totalPagado);
-        
-        if (venta.convenio && venta.abono >= venta.total) {
-            saldoPendiente = 0; // Convenios pagados con crédito no tienen saldo pendiente
-        }
-
-        const result = {
-            total,
-            totalAbonado,
-            totalPagado,
-            saldoPendiente
-        };
-
-        // Guardar en cache
-        saldoCache.set(ventaId, {
-            data: result,
-            timestamp: Date.now()
-        });
-
-        return result;
-    } catch (error) {
-        console.error("Error al calcular saldo pendiente:", error);
-        return {
-            total: 0,
-            totalAbonado: 0,
-            totalPagado: 0,
-            saldoPendiente: 0
-        };
+    if (venta.convenio && venta.abono >= venta.total) {
+      saldoPendiente = 0; // Convenios pagados con crédito no tienen saldo pendiente
     }
+
+    const result = {
+      total,
+      totalAbonado,
+      totalPagado,
+      saldoPendiente
+    };
+
+    // Guardar en cache
+    saldoCache.set(ventaId, {
+      data: result,
+      timestamp: Date.now()
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error al calcular saldo pendiente:", error);
+    return {
+      total: 0,
+      totalAbonado: 0,
+      totalPagado: 0,
+      saldoPendiente: 0
+    };
+  }
 }
 
 // Limpiar cache periódicamente
 setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of saldoCache.entries()) {
-        if (now - value.timestamp > CACHE_DURATION) {
-            saldoCache.delete(key);
-        }
+  const now = Date.now();
+  for (const [key, value] of saldoCache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      saldoCache.delete(key);
     }
+  }
 }, CACHE_DURATION);
 
 // Exportar funciones globales para uso en otros archivos
