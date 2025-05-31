@@ -391,6 +391,10 @@
             color: #aaaaaa;
         }
 
+        .btn-action:active {
+            transform: translateY(0);
+        }
+
         /* Results counter */
         .results-counter {
             font-size: 0.875rem;
@@ -434,7 +438,7 @@
         </div>
         <nav class="main-nav">
             <ul>
-                <li><a href="inventario.html">Inventario</a></li>
+                <li class="active"><a href="inventario.html">Inventario</a></li>
                 <li><a href="ventas.html">Ventas</a></li>
                 <li><a href="clientes.html">Clientes</a></li>
                 <li><a href="convenios.html">Convenios</a></li>
@@ -447,7 +451,7 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-6 max-w-7xl">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold border-b-2 border-primary pb-2">Inventario</h2>
+            <h2 class="text-2xl font-bold mb-6 border-b-2 border-primary pb-2">Inventario</h2>
 
             <!-- Notification Bell -->
             <div class="relative">
@@ -493,13 +497,17 @@
 
         <!-- Tabs Navigation -->
         <div class="tabs flex mb-6 border-b border-mediumGray dark:border-gray-700">
-            <button class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative active" data-tab="productos">
+            <button id="tabProductos" class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative active"
+                data-tab="productos">
                 Productos
-                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-0 transition-opacity"></span>
+                <span id="spanProductos"
+                    class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-100 transition-opacity"></span>
             </button>
-            <button class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative" data-tab="armazones">
+            <button id="tabArmazones" class="tab-btn tab-transition py-2 px-4 mr-2 font-medium relative"
+                data-tab="armazones">
                 Armazones
-                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-0 transition-opacity"></span>
+                <span id="spanArmazones"
+                    class="absolute bottom-0 left-0 w-full h-0.5 bg-primary opacity-0 transition-opacity"></span>
             </button>
         </div>
 
