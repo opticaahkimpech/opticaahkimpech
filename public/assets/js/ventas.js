@@ -29,6 +29,7 @@ let clientes = [];
 let productos = [];
 let armazones = [];
 let empresas = [];
+let miembrosConvenio = []; // Agregado para manejar miembros de convenio
 let currentClientId = null;
 let searchTimeout = null;
 let allVentas = [];
@@ -67,7 +68,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadClientes(),
             loadProductos(),
             loadArmazones(),
-            loadEmpresas()
+            loadEmpresas(),
+            loadMiembrosConvenio() // Agregado para cargar miembros de convenio
         ]);
 
         // Configurar eventos
@@ -115,7 +117,8 @@ async function checkAndCreateVentasCollection() {
                 { nombre: 'Efectivo', descripcion: 'Pago en efectivo' },
                 { nombre: 'Tarjeta de crédito', descripcion: 'Pago con tarjeta de crédito' },
                 { nombre: 'Tarjeta de débito', descripcion: 'Pago con tarjeta de débito' },
-                { nombre: 'Transferencia', descripcion: 'Pago por transferencia bancaria' }
+                { nombre: 'Transferencia', descripcion: 'Pago por transferencia bancaria' },
+                { nombre: 'Crédito convenio', descripcion: 'Pago con crédito de convenio' } // Agregado método de pago para convenio
             ];
 
             for (const metodoPago of metodosPagoIniciales) {
@@ -235,6 +238,78 @@ async function loadEmpresas() {
     } catch (error) {
         console.error("Error al cargar empresas:", error);
         showToast('Error al cargar empresas', 'danger');
+    }
+}
+
+// Función para cargar miembros de convenio - AGREGADA
+async function loadMiembrosConvenio() {
+    try {
+        const miembrosSnapshot = await getDocs(collection(db, 'miembrosConvenio'));
+        miembrosConvenio = [];
+
+        miembrosSnapshot.forEach(doc => {
+            miembrosConvenio.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+
+        console.log("Miembros de convenio cargados:", miembrosConvenio.length);
+    } catch (error) {
+        console.error("Error al cargar miembros de convenio:", error);
+        showToast('Error al cargar miembros de convenio', 'danger');
+    }
+}
+
+// Función corregida para calcular crédito usado - DEBE calcular el total gastado, no el saldo pendiente
+async function calcularCreditoUsadoCliente(clienteId) {
+    try {
+        const ventasQuery = query(
+            collection(db, 'ventas'),
+            where('clienteId', '==', clienteId),
+            where('convenio', '==', true),
+            where('estado', '!=', 'cancelada')
+        );
+        
+        const ventasSnapshot = await getDocs(ventasQuery);
+        let creditoUsado = 0;
+
+        // CORREGIDO: Sumar el total de cada venta, no el saldo pendiente
+        for (const ventaDoc of ventasSnapshot.docs) {
+            const venta = ventaDoc.data();
+            creditoUsado += venta.total || 0; // Usar el total de la venta
+        }
+
+        return creditoUsado;
+    } catch (error) {
+        console.error("Error al calcular crédito usado:", error);
+        return 0;
+    }
+}
+
+// Función para obtener información de crédito de un cliente con convenio - AGREGADA
+async function obtenerInfoCreditoCliente(clienteId) {
+    try {
+        const miembro = miembrosConvenio.find(m => m.clienteId === clienteId);
+        if (!miembro) {
+            return null;
+        }
+
+        const empresa = empresas.find(e => e.id === miembro.empresaId);
+        const creditoUsado = await calcularCreditoUsadoCliente(clienteId);
+        const limiteCredito = miembro.limiteCredito || 0;
+        const creditoDisponible = Math.max(0, limiteCredito - creditoUsado);
+
+        return {
+            miembro,
+            empresa,
+            limiteCredito,
+            creditoUsado,
+            creditoDisponible
+        };
+    } catch (error) {
+        console.error("Error al obtener información de crédito:", error);
+        return null;
     }
 }
 
@@ -498,14 +573,14 @@ function setupClientSelector() {
                     <div class="font-medium">${option.nombre}</div>
                     ${!option.isShowroom ? `<div class="text-sm text-gray-500">${option.telefono || ''} ${option.email || ''}</div>` : ''}
                 `;
-                optionElement.addEventListener('click', () => {
+                optionElement.addEventListener('click', async () => { // Modificado para ser async
                     clienteSelector.value = option.nombre;
                     clienteIdInput.value = option.id;
                     clienteDropdown.style.display = 'none';
                     if (option.isShowroom) {
                         hideConvenioInfo();
                     } else {
-                        updateConvenioInfo(option);
+                        await updateConvenioInfo(option); // Modificado para usar await
                     }
                     updateAbonoVisibility();
                 });
@@ -562,8 +637,8 @@ function setupClientSelector() {
     });
 }
 
-// Actualizar información de convenio
-function updateConvenioInfo(cliente) {
+// Función corregida para actualizar información de convenio - MODIFICADA para incluir información de crédito
+async function updateConvenioInfo(cliente) {
     const convenioInfo = document.getElementById('convenioInfo');
     const empresaConvenio = document.getElementById('empresaConvenio');
     const sucursalConvenio = document.getElementById('sucursalConvenio');
@@ -572,20 +647,47 @@ function updateConvenioInfo(cliente) {
     if (!convenioInfo) return;
 
     if (cliente.convenio && cliente.empresaId) {
-        const empresa = empresas.find(e => e.id === cliente.empresaId);
-
-        if (empresa) {
-            empresaConvenio.textContent = empresa.nombre;
-            sucursalConvenio.textContent = cliente.sucursal || 'No especificada';
-            descuentoConvenio.textContent = empresa.descuento || 0;
+        const creditoInfo = await obtenerInfoCreditoCliente(cliente.id);
+        
+        if (creditoInfo && creditoInfo.empresa) {
+            empresaConvenio.textContent = creditoInfo.empresa.nombre;
+            sucursalConvenio.textContent = creditoInfo.miembro.sucursal || 'No especificada';
+            descuentoConvenio.textContent = creditoInfo.empresa.descuento || 0;
+            
+            // Actualizar información de crédito
+            document.getElementById('creditoLimite').textContent = `$${creditoInfo.limiteCredito.toFixed(2)}`;
+            document.getElementById('creditoUsado').textContent = `$${creditoInfo.creditoUsado.toFixed(2)}`;
+            document.getElementById('creditoDisponible').textContent = `$${creditoInfo.creditoDisponible.toFixed(2)}`;
+            
+            // Actualizar barra de progreso
+            const porcentajeUso = creditoInfo.limiteCredito > 0 ? (creditoInfo.creditoUsado / creditoInfo.limiteCredito) * 100 : 0;
+            document.getElementById('creditoPercentage').textContent = `${porcentajeUso.toFixed(1)}%`;
+            document.getElementById('creditoProgressBar').style.width = `${Math.min(porcentajeUso, 100)}%`;
+            
+            // Mostrar alerta si está cerca del límite
+            const creditoAlert = document.getElementById('creditoAlert');
+            const creditoAlertMessage = document.getElementById('creditoAlertMessage');
+            
+            if (porcentajeUso >= 90) {
+                creditoAlert.classList.remove('hidden');
+                creditoAlertMessage.textContent = porcentajeUso >= 100 
+                    ? 'El cliente ha excedido su límite de crédito'
+                    : 'El cliente está cerca de su límite de crédito';
+            } else {
+                creditoAlert.classList.add('hidden');
+            }
+            
             convenioInfo.style.display = 'block';
 
             // Aplicar descuento automáticamente a productos existentes
-            applyConvenioDiscountToProducts(empresa.descuento || 0);
+            applyConvenioDiscountToProducts(creditoInfo.empresa.descuento || 0);
         }
     } else {
         hideConvenioInfo();
     }
+    
+    // AGREGADO: Actualizar visibilidad del abono después de procesar convenio
+    updateAbonoVisibility();
 }
 
 // Ocultar información de convenio
@@ -633,18 +735,32 @@ function applyConvenioDiscountToProducts(descuentoPorcentaje) {
     });
 }
 
-// Actualizar visibilidad del campo abono
+// Función corregida para actualizar visibilidad del campo abono
 function updateAbonoVisibility() {
     const clienteId = document.getElementById('clienteId').value;
     const abonoGroup = document.getElementById('abonoGroup');
+    const labelAbonoGroup = document.querySelector('label[for="abono"]');
     const abonoInput = document.getElementById('abono');
 
     if (abonoGroup && abonoInput) {
         if (clienteId) {
-            abonoGroup.style.display = 'block';
-            abonoInput.value = '0';
+            // Cliente seleccionado - verificar si tiene convenio
+            const cliente = clientes.find(c => c.id === clienteId);
+            
+            if (cliente && cliente.convenio) {
+                // Cliente CON convenio - OCULTAR abono (se paga con crédito)
+                abonoGroup.style.display = 'none';
+                abonoInput.value = '0';
+            } else {
+                // Cliente SIN convenio - MOSTRAR abono
+                labelAbonoGroup.textContent = 'Abono inicial';
+                abonoGroup.style.display = 'block';
+                abonoInput.value = '0';
+            }
         } else {
-            abonoGroup.style.display = 'none';
+            // Venta de mostrador - MOSTRAR abono (debe ser pago completo)
+            abonoGroup.style.display = 'block';
+            labelAbonoGroup.textContent = 'Pago total';
             const total = document.getElementById('total').value;
             abonoInput.value = total || '0';
         }
@@ -809,7 +925,7 @@ function setupProductoEvents(index) {
             }
         });
 
-        productoSelect.addEventListener('change', () => {
+        productoSelect.addEventListener('change', async () => { // Modificado para ser async
             const selectedOption = productoSelect.options[productoSelect.selectedIndex];
             const precio = parseFloat(selectedOption.dataset.precio) || 0;
             const stock = parseInt(selectedOption.dataset.stock) || 0;
@@ -839,15 +955,16 @@ function setupProductoEvents(index) {
                 }
             }
 
+            // Modificado para usar información de crédito
             const clienteId = document.getElementById('clienteId').value;
             if (clienteId) {
                 const cliente = clientes.find(c => c.id === clienteId);
                 if (cliente && cliente.convenio && cliente.empresaId) {
-                    const empresa = empresas.find(e => e.id === cliente.empresaId);
-                    if (empresa && empresa.descuento) {
+                    const creditoInfo = await obtenerInfoCreditoCliente(clienteId);
+                    if (creditoInfo && creditoInfo.empresa && creditoInfo.empresa.descuento) {
                         const descuentoInput = document.getElementById(`descuento_${index}`);
                         if (descuentoInput && !descuentoInput.dataset.manuallySet) {
-                            descuentoInput.value = empresa.descuento;
+                            descuentoInput.value = creditoInfo.empresa.descuento;
                             descuentoInput.dispatchEvent(new Event('input'));
                         }
                     }
@@ -942,13 +1059,10 @@ function calcularTotal() {
         totalInput.value = total.toFixed(2);
     }
 
-    const clienteId = document.getElementById('clienteId').value;
+    // AGREGADO: Actualizar visibilidad del abono cuando cambie el total
+    updateAbonoVisibility();
+
     const abonoInput = document.getElementById('abono');
-
-    if (!clienteId && abonoInput) {
-        abonoInput.value = total.toFixed(2);
-    }
-
     if (abonoInput) {
         abonoInput.max = total;
     }
@@ -965,13 +1079,12 @@ function setupFormEvents() {
     }
 }
 
-// Manejar envío del formulario de venta
+// Función corregida para manejar envío del formulario de venta
 async function handleSaleSubmit() {
     try {
         const saleId = document.getElementById('saleId').value;
         const clienteId = document.getElementById('clienteId').value;
         const fechaVenta = document.getElementById('fechaVenta').value;
-        const abono = parseFloat(document.getElementById('abono').value) || 0;
         const total = parseFloat(document.getElementById('total').value) || 0;
         const observaciones = document.getElementById('observaciones').value;
 
@@ -1021,17 +1134,45 @@ async function handleSaleSubmit() {
 
         if (!isValid) return;
 
-        if (abono > total) {
-            showToast('El abono no puede ser mayor al total', 'warning');
-            return;
+        let abono = 0;
+        let convenio = false;
+        let empresaId = null;
+
+        if (clienteId) {
+            const cliente = clientes.find(c => c.id === clienteId);
+            if (cliente && cliente.convenio) {
+                convenio = true;
+                empresaId = cliente.empresaId;
+                
+                // CORREGIDO: Validar crédito disponible para convenios
+                const creditoInfo = await obtenerInfoCreditoCliente(clienteId);
+                if (creditoInfo) {
+                    if (total > creditoInfo.creditoDisponible) {
+                        showToast(`Crédito insuficiente. Disponible: $${creditoInfo.creditoDisponible.toFixed(2)}, Requerido: $${total.toFixed(2)}`, 'warning');
+                        return;
+                    }
+                    // Para convenios, el "abono" es el total (se paga con crédito)
+                    abono = total;
+                } else {
+                    showToast('Error al obtener información de crédito', 'danger');
+                    return;
+                }
+            } else {
+                // Cliente normal - obtener abono del formulario
+                abono = parseFloat(document.getElementById('abono').value) || 0;
+                if (abono > total) {
+                    showToast('El abono no puede ser mayor al total', 'warning');
+                    return;
+                }
+            }
+        } else {
+            // Venta de mostrador - pago completo
+            abono = total;
         }
 
-        if (!clienteId && abono < total) {
-            showToast('Las ventas de mostrador deben pagarse completamente', 'warning');
-            return;
-        }
-
-        const confirmMessage = `¿Confirmar venta por $${total.toFixed(2)}?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`;
+        const confirmMessage = convenio 
+            ? `¿Confirmar venta por $${total.toFixed(2)} con crédito de convenio?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`
+            : `¿Confirmar venta por $${total.toFixed(2)}?\n\nEsto reducirá el stock de ${productosParaActualizar.length} producto(s).`;
 
         showCustomAlert(
             'Confirmar Venta',
@@ -1046,7 +1187,9 @@ async function handleSaleSubmit() {
                     productosParaActualizar,
                     total,
                     abono,
-                    observaciones
+                    observaciones,
+                    convenio,
+                    empresaId
                 });
             }
         );
@@ -1057,7 +1200,7 @@ async function handleSaleSubmit() {
     }
 }
 
-// Procesar la venta
+// Función corregida para procesar la venta
 async function processSale(saleData) {
     try {
         const {
@@ -1068,22 +1211,14 @@ async function processSale(saleData) {
             productosParaActualizar,
             total,
             abono,
-            observaciones
+            observaciones,
+            convenio,
+            empresaId
         } = saleData;
 
-        let convenio = false;
-        let empresaId = null;
-
-        if (clienteId) {
-            const cliente = clientes.find(c => c.id === clienteId);
-            if (cliente && cliente.convenio) {
-                convenio = true;
-                empresaId = cliente.empresaId;
-            }
-        }
-
+        // CORREGIDO: Para convenios, el estado siempre es 'pagada' porque se paga con crédito
         let estado = 'pendiente';
-        if (abono >= total) {
+        if (convenio || abono >= total) {
             estado = 'pagada';
         } else if (abono > 0) {
             estado = 'parcial';
@@ -1095,7 +1230,7 @@ async function processSale(saleData) {
             productos,
             total,
             abono,
-            saldo: total - abono,
+            saldo: convenio ? 0 : total - abono, // CORREGIDO: Para convenios, saldo siempre es 0
             estado,
             convenio,
             empresaId,
@@ -1108,8 +1243,18 @@ async function processSale(saleData) {
 
         await actualizarInventario(productosParaActualizar);
 
+        // CORREGIDO: Para convenios, registrar como pago con crédito, no como abono
         if (abono > 0) {
-            await registrarAbono(ventaRef.id, clienteId, abono, 'Abono inicial');
+            const metodoPago = convenio ? 'credito_convenio' : 'efectivo';
+            const descripcion = convenio ? 'Pago con crédito de convenio' : 'Abono inicial';
+            
+            if (convenio) {
+                // Para convenios, registrar como pago completo
+                await registrarPago(ventaRef.id, clienteId, abono, descripcion, metodoPago);
+            } else {
+                // Para clientes normales, registrar como abono
+                await registrarAbono(ventaRef.id, clienteId, abono, descripcion, metodoPago);
+            }
         }
 
         if (clienteId) {
@@ -1118,7 +1263,11 @@ async function processSale(saleData) {
             });
         }
 
-        showToast('Venta registrada correctamente', 'success');
+        const mensaje = convenio 
+            ? 'Venta registrada correctamente con crédito de convenio'
+            : 'Venta registrada correctamente';
+            
+        showToast(mensaje, 'success');
 
         document.getElementById('saleModal').style.display = 'none';
         
@@ -1552,52 +1701,45 @@ function createVentaRow(venta) {
     row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
 
     row.innerHTML = `
-        <td class="py-3 px-4 font-mono text-sm">${venta.id.substring(0, 8)}...</td>
-        <td class="py-3 px-4">${fechaText}</td>
-        <td class="py-3 px-4">${clienteText}</td>
-        <td class="py-3 px-4 font-semibold">$${venta.total.toFixed(2)}</td>
-        <td class="py-3 px-4 text-green-600">$${venta.saldoInfo.totalAbonado.toFixed(2)}</td>
-        <td class="py-3 px-4 ${venta.saldoInfo.saldoPendiente > 0 ? 'text-red-600' : 'text-green-600'}">
-            $${venta.saldoInfo.saldoPendiente.toFixed(2)}
-        </td>
-        <td class="py-3 px-4">
-            <span class="status-${venta.estado}">
-                ${getEstadoText(venta.estado)}
-            </span>
-        </td>
-        <td class="py-3 px-4">
-            ${venta.convenio ?
-            '<span class="badge badge-success">Sí</span>' :
-            '<span class="badge badge-secondary">No</span>'
-        }
-        </td>
-        <td class="py-3 px-4">
-            <div class="flex space-x-1">
-                <button class="view-sale p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors" 
-                        data-id="${venta.id}" title="Ver detalles">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                </button>
-                ${venta.saldoInfo.saldoPendiente > 0 && venta.estado !== 'cancelada' ? `
-                    <button class="add-payment p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors" 
-                            data-id="${venta.id}" data-cliente="${venta.clienteId || ''}" title="Agregar pago">
-                        <svg viewBox="0 0 24 24" class="h-4 w-4" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                    </button>
-                ` : ''}
-                ${venta.estado !== 'cancelada' ? `
-                    <button class="cancel-sale p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors" 
-                            data-id="${venta.id}" title="Cancelar venta">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                ` : ''}
-            </div>
-        </td>
+      <td class="py-3 px-4 font-mono text-sm">${venta.id.substring(0, 8)}...</td>
+      <td class="py-3 px-4">${fechaText}</td>
+      <td class="py-3 px-4">${clienteText}</td>
+      <td class="py-3 px-4 font-semibold">$${venta.total.toFixed(2)}</td>
+      <td class="py-3 px-4 text-green-600">$${venta.saldoInfo.totalAbonado.toFixed(2)}</td>
+      <td class="py-3 px-4 ${venta.saldoInfo.saldoPendiente > 0 ? 'text-red-600' : 'text-green-600'}">
+        $${venta.saldoInfo.saldoPendiente.toFixed(2)}
+      </td>
+      <td class="py-3 px-4">
+        <span class="status-${venta.estado}">
+          ${getEstadoText(venta.estado)}
+        </span>
+      </td>
+      <td class="py-3 px-4">
+        ${venta.convenio ?
+        '<span class="badge badge-success">Sí</span>' :
+        '<span class="badge badge-secondary">No</span>'
+      }
+      </td>
+      <td class="py-3 px-4">
+        <div class="flex space-x-1">
+          <button class="view-sale inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-full text-sm font-medium transition-colors" 
+              data-id="${venta.id}" title="Ver detalles">
+            <span class="span-view-details">Ver</span>
+          </button>
+          ${venta.saldoInfo.saldoPendiente > 0 && venta.estado !== 'cancelada' ? `
+            <button class="add-payment inline-flex items-center px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-full text-sm font-medium transition-colors" 
+                data-id="${venta.id}" data-cliente="${venta.clienteId || ''}" title="Agregar pago">
+              <span class="span-add-payment">Pagar</span>
+            </button>
+          ` : ''}
+          ${venta.estado !== 'cancelada' ? `
+            <button class="cancel-sale inline-flex items-center px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-full text-sm font-medium transition-colors" 
+                data-id="${venta.id}" title="Cancelar venta">
+              <span class="span-cancel">Cancelar</span>
+            </button>
+          ` : ''}
+        </div>
+      </td>
     `;
 
     return row;
@@ -2300,7 +2442,7 @@ async function cancelSale(saleId) {
     }
 }
 
-// Función optimizada para calcular saldo pendiente con cache
+// Función corregida para calcular saldo pendiente
 async function calcularSaldoPendiente(ventaId) {
     // Verificar cache primero
     const cached = saldoCache.get(ventaId);
@@ -2322,21 +2464,32 @@ async function calcularSaldoPendiente(ventaId) {
         const venta = ventaDoc.data();
         const total = venta.total;
 
-        let totalAbonado = venta.abono || 0;
+        // CORREGIDO: Para convenios, considerar el abono inicial como pago completo
+        let totalAbonado = 0;
+        let totalPagado = venta.abono || 0; // El abono inicial se considera como pago
+
+        // Solo sumar abonos adicionales (no el inicial)
         abonosSnapshot.forEach(doc => {
             const abono = doc.data();
-            if (abono.descripcion !== 'Abono inicial') {
+            if (abono.descripcion !== 'Abono inicial' && abono.descripcion !== 'Pago con crédito de convenio') {
                 totalAbonado += abono.monto;
             }
         });
 
-        let totalPagado = 0;
+        // Sumar pagos adicionales
         pagosSnapshot.forEach(doc => {
             const pago = doc.data();
-            totalPagado += pago.monto;
+            if (pago.descripcion !== 'Pago con crédito de convenio') {
+                totalPagado += pago.monto;
+            }
         });
 
-        const saldoPendiente = Math.max(0, total - totalAbonado - totalPagado);
+        // CORREGIDO: Para convenios, el saldo pendiente siempre debe ser 0 si se pagó con crédito
+        let saldoPendiente = Math.max(0, total - totalAbonado - totalPagado);
+        
+        if (venta.convenio && venta.abono >= venta.total) {
+            saldoPendiente = 0; // Convenios pagados con crédito no tienen saldo pendiente
+        }
 
         const result = {
             total,
@@ -2378,3 +2531,5 @@ window.loadVentas = loadVentas;
 window.calcularSaldoPendiente = calcularSaldoPendiente;
 window.showToast = showToast;
 window.showCustomAlert = showCustomAlert;
+window.addPayment = addPayment;
+window.showSaleDetailModal = showSaleDetailModal;
