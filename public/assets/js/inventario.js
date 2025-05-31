@@ -884,30 +884,48 @@ function updateProductTypeSelector() {
 
 // CORREGIDO: Función para configurar las pestañas con estado de paginación separado
 function setupTabs() {
-  const tabButtons = document.querySelectorAll(".tab-btn")
-  const tabContents = document.querySelectorAll(".tab-content")
+  const tabProductos = document.getElementById("tabProductos")
+  const tabArmazones = document.getElementById("tabArmazones")
+  const spanProductos = document.getElementById("spanProductos")
+  const spanArmazones = document.getElementById("spanArmazones")
+  const productosTab = document.getElementById("productos-tab")
+  const armazonesTab = document.getElementById("armazones-tab")
 
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      // CORREGIDO: No resetear página al cambiar de pestaña, mantener estado independiente
-      
-      tabButtons.forEach((btn) => {
-        btn.classList.remove("active")
-        btn.querySelector("span").classList.add("opacity-0")
-      })
-
-      button.classList.add("active")
-      button.querySelector("span").classList.remove("opacity-0")
-
-      const tabId = button.getAttribute("data-tab")
-      tabContents.forEach((content) => {
-        content.style.display = content.id === tabId + "-tab" ? "block" : "none"
-      })
-
-      // CORREGIDO: Refrescar la pestaña activa con su propio estado de paginación
-      refreshCurrentTab()
-    })
+  tabProductos.addEventListener("click", () => {
+    tabProductos.classList.add("active")
+    tabArmazones.classList.remove("active")
+    spanProductos.classList.remove("opacity-0")
+    spanProductos.classList.add("opacity-100")
+    spanArmazones.classList.remove("opacity-100")
+    spanArmazones.classList.add("opacity-0")
+    productosTab.style.display = "block"
+    armazonesTab.style.display = "none"
+    refreshCurrentTab()
+    updatePaginationControls()
   })
+
+  tabArmazones.addEventListener("click", () => {
+    tabArmazones.classList.add("active")
+    tabProductos.classList.remove("active")
+    spanArmazones.classList.remove("opacity-0")
+    spanArmazones.classList.add("opacity-100")
+    spanProductos.classList.remove("opacity-100")
+    spanProductos.classList.add("opacity-0")
+    productosTab.style.display = "none"
+    armazonesTab.style.display = "block"
+    refreshCurrentTab()
+    updatePaginationControls()
+  })
+
+  // Estado inicial
+  tabProductos.classList.add("active")
+  tabArmazones.classList.remove("active")
+  spanProductos.classList.remove("opacity-0")
+  spanProductos.classList.add("opacity-100")
+  spanArmazones.classList.remove("opacity-100")
+  spanArmazones.classList.add("opacity-0")
+  productosTab.style.display = "block"
+  armazonesTab.style.display = "none"
 }
 
 // Función para cargar categorías
