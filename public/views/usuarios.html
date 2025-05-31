@@ -34,12 +34,85 @@
             }
         }
     </script>
+    <style>
+        /* Search box improvements - sin botón */
+        .search-container {
+            position: relative;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .dark .search-input {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(240, 157, 31, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            pointer-events: none;
+        }
+
+        /* Improved filter styles */
+        .filter-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .dark .filter-container {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-color: #475569;
+        }
+
+        .filter-toggle-btn {
+            background: linear-gradient(135deg, #f09d1f 0%, #e8890b 100%);
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(240, 157, 31, 0.3);
+        }
+
+        .filter-toggle-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(240, 157, 31, 0.4);
+        }
+
+        .filter-toggle-btn.active {
+            background: linear-gradient(135deg, #e8890b 0%, #d97706 100%);
+        }
+    </style>
 </head>
 
 <body class="bg-lightGray dark:bg-gray-900 text-dark dark:text-white">
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
-
     <!-- Header -->
     <header class="main-header">
         <img src="../assets/img/iconoAKPV1.png" alt="Logo" id="logo">
@@ -61,30 +134,107 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-6 max-w-7xl">
         <h2 class="text-2xl font-bold mb-6 border-b-2 border-primary pb-2">Gestión de Usuarios</h2>
-        
+
         <!-- Admin Only Message -->
-        <div id="adminOnlyMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" style="display: none;">
+        <div id="adminOnlyMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            style="display: none;">
             <strong class="font-bold">Acceso restringido!</strong>
             <span class="block sm:inline">Esta sección es solo para administradores.</span>
             <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-                <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Cerrar</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20">
+                    <title>Cerrar</title>
+                    <path
+                        d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+                </svg>
             </span>
         </div>
-        
+
         <!-- Actions Bar -->
         <div class="actions flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <button id="addUserBtn" class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Nuevo usuario
-            </button>
-            <div class="search-box w-full sm:w-auto flex">
-                <input type="text" id="searchUser" placeholder="Buscar usuario..." class="w-full sm:w-64 py-2 px-3 border border-mediumGray rounded-l-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-800 dark:border-gray-700">
-                <button class="btn-secondary bg-mediumGray hover:bg-mediumGray/80 py-2 px-4 rounded-r-md flex items-center" id="searchUserBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <div class="flex gap-2">
+                <button id="addUserBtn"
+                    class="btn-action bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
+                    Nuevo usuario
+                </button>
+                <button id="toggleFiltrosBtn"
+                    class="btn-action btn-compact bg-primary hover:bg-primary/80 text-white py-3 px-6 rounded shadow-sm flex items-center filter-toggle-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filtros
+                </button>
+            </div>
+            <div class="search-container">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 search-icon" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" id="searchUser" placeholder="Buscar usuario..." class="search-input">
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div id="filtrosPanel" class="filter-container" style="display: none;">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+                Filtros Avanzados
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div class="form-group">
+                    <label for="filtroRol" class="block mb-1 font-medium">Rol</label>
+                    <select id="filtroRol"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Todos</option>
+                        <option value="admin">Administrador</option>
+                        <option value="employee">Empleado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filtroEstado" class="block mb-1 font-medium">Estado</label>
+                    <select id="filtroEstado"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                        <option value="">Todos</option>
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filtroFechaInicio" class="block mb-1 font-medium">Fecha desde</label>
+                    <input type="date" id="filtroFechaInicio"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+
+                <div class="form-group">
+                    <label for="filtroFechaFin" class="block mb-1 font-medium">Fecha hasta</label>
+                    <input type="date" id="filtroFechaFin"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2">
+                <button id="limpiarFiltrosBtn"
+                    class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                    Limpiar filtros
+                </button>
+                <button id="aplicarFiltrosBtn"
+                    class="py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">
+                    Aplicar filtros
                 </button>
             </div>
         </div>
@@ -107,58 +257,99 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Paginación -->
+        <div class="pagination flex justify-center items-center mt-6 space-x-2">
+            <button id="prevPageBtn"
+                class="py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-l hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <div id="pageInfo"
+                class="py-2 px-4 bg-white dark:bg-gray-800 border-t border-b border-mediumGray dark:border-gray-700">
+                Página <span id="currentPage">1</span> de <span id="totalPages">1</span>
+            </div>
+            <button id="nextPageBtn"
+                class="py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-r hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
     </main>
 
     <!-- User Modal -->
     <div id="userModal" class="modal">
-        <div class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
             <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
                 <h3 id="userModalTitle" class="text-xl font-semibold">Nuevo Usuario</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
             </div>
             <form id="userForm" class="space-y-4">
                 <input type="hidden" id="userId">
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
                         <label for="username" class="block mb-1 font-medium">Nombre de usuario</label>
-                        <input type="text" id="username" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                        <input type="text" id="username"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
                     </div>
                     <div class="form-group">
                         <label for="password" class="block mb-1 font-medium">Contraseña</label>
-                        <input type="password" id="password" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                        <input type="password" id="password"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="nombre" class="block mb-1 font-medium">Nombre completo</label>
-                    <input type="text" id="nombre" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                    <input type="text" id="nombre"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-group">
                         <label for="rol" class="block mb-1 font-medium">Rol</label>
-                        <select id="rol" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                        <select id="rol"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
                             <option value="admin">Administrador</option>
                             <option value="vendedor">Empleado</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="activo" class="block mb-1 font-medium">Estado</label>
-                        <select id="activo" class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" required>
+                        <select id="activo"
+                            class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                            required>
                             <option value="1">Activo</option>
                             <option value="0">Inactivo</option>
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
-                    <button type="button" class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
-                    <button type="submit" class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar usuario</button>
+                    <button type="button"
+                        class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Guardar
+                        usuario</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <script type="module" src="../assets/js/check-current-user.js"></script>
     <script type="module" src="../assets/js/auth-check.js"></script>
