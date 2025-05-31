@@ -568,28 +568,30 @@ async function loadUsers(filtros = {}) {
       const estadoText = user.activo ? "Activo" : "Inactivo";
       const rolText = user.rol === "admin" ? "Administrador" : "Empleado";
       row.innerHTML = `
-        <td class="py-3 px-4">${user.id.substring(0, 8)}...</td>
-        <td class="py-3 px-4">${user.username || ""}</td>
-        <td class="py-3 px-4">${user.nombre || ""}</td>
-        <td class="py-3 px-4">${rolText}</td>
-        <td class="py-3 px-4">
-            <span class="${estadoClass} font-semibold">${estadoText}</span>
-        </td>
-        <td class="py-3 px-4">
-            <div class="flex space-x-2">
-                <button class="edit-user text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" data-id="${user.id}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                </button>
-                <button class="delete-user text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-id="${user.id}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-        </td>
-      `;
+      <td class="py-3 px-4">${user.id.substring(0, 8)}...</td>
+      <td class="py-3 px-4">${user.username || ""}</td>
+      <td class="py-3 px-4">${user.nombre || ""}</td>
+      <td class="py-3 px-4">${rolText}</td>
+      <td class="py-3 px-4">
+          <span class="${estadoClass} font-semibold">${estadoText}</span>
+      </td>
+      <td class="py-3 px-4">${formatDate(user.createdAt)}</td>
+      <td class="py-3 px-4">${formatDate(user.updatedAt)}</td>
+      <td class="py-3 px-4">
+          <div class="flex space-x-2">
+              <button class="edit-user text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" data-id="${user.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+              </button>
+              <button class="delete-user text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" data-id="${user.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+              </button>
+          </div>
+      </td>
+    `;
       tableBody.appendChild(row);
     });
 
@@ -599,6 +601,24 @@ async function loadUsers(filtros = {}) {
     console.error("Error al cargar usuarios:", error);
     tableBody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-red-500">Error al cargar usuarios</td></tr>';
     showToast("Error al cargar usuarios", "danger");
+  }
+}
+
+// Formatear fecha
+function formatDate(timestamp) {
+  if (!timestamp) return "-";
+  try {
+    // Firestore Timestamp
+    const date = typeof timestamp.toDate === "function" ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("es-MX", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return "-";
   }
 }
 
