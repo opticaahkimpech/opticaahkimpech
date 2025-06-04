@@ -125,10 +125,7 @@
 
         .client-search-input {
             width: 100%;
-
-            /* antes: 3rem */
             font-size: 1.25rem;
-            /* más grande y legible */
         }
 
         input#clienteSelector.client-search-input {
@@ -149,20 +146,15 @@
 
         .client-search-input::placeholder {
             font-size: 1rem;
-            /* Igual que el input */
             color: #a3a3a3;
-            /* Un gris suave, puedes ajustar */
             opacity: 1;
-            /* Para que no sea muy tenue */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .client-search-icon {
             left: 0.5rem;
-            /* antes: 1rem */
             width: 1.5em;
             height: 1.5em;
-            /* más grande si lo deseas */
         }
 
         .client-dropdown {
@@ -322,6 +314,40 @@
             @apply bg-red-900 text-red-200;
         }
 
+        /* Estados de armazón - AGREGADO */
+        .estado-apartado {
+            @apply bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        .estado-en-proceso {
+            @apply bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        .estado-pendiente-entrega {
+            @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        .estado-entregado {
+            @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold;
+        }
+
+        /* Dark mode estados de armazón */
+        .dark .estado-apartado {
+            @apply bg-purple-900 text-purple-200;
+        }
+
+        .dark .estado-en-proceso {
+            @apply bg-blue-900 text-blue-200;
+        }
+
+        .dark .estado-pendiente-entrega {
+            @apply bg-yellow-900 text-yellow-200;
+        }
+
+        .dark .estado-entregado {
+            @apply bg-green-900 text-green-200;
+        }
+
         /* Badge styles */
         .badge {
             @apply inline-block py-1 px-2.5 rounded-full text-xs font-bold;
@@ -329,6 +355,10 @@
 
         .badge-success {
             @apply bg-green-600 text-white;
+        }
+
+        .badge-warning {
+            @apply bg-yellow-600 text-white;
         }
 
         .badge-secondary {
@@ -506,6 +536,259 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
+
+        /* Estilos para fechas de entrega */
+        .delivery-info {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .dark .delivery-info {
+            background: #0c4a6e;
+            border-color: #0ea5e9;
+            color: #e0f2fe;
+        }
+
+        .delivery-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+        }
+
+        .delivery-status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .delivery-status.delivered {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .delivery-status.partial {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* Estilos para modal de estado de armazón - AGREGADO */
+        .frame-status-modal {
+            z-index: 55;
+        }
+
+        .frame-status-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+            margin: 15vh auto;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .dark .frame-status-content {
+            background: #2d3748;
+            color: #f7fafc;
+        }
+
+        .status-option {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .dark .status-option {
+            border-bottom-color: #4b5563;
+        }
+
+        .status-option:hover {
+            background-color: #f9fafb;
+        }
+
+        .dark .status-option:hover {
+            background-color: #4b5563;
+        }
+
+        .status-option:last-child {
+            border-bottom: none;
+        }
+
+        .status-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .status-icon.apartado {
+            background: #8b5cf6;
+        }
+
+        .status-icon.en-proceso {
+            background: #3b82f6;
+        }
+
+        .status-icon.pendiente-entrega {
+            background: #f59e0b;
+        }
+
+        .status-icon.entregado {
+            background: #10b981;
+        }
+
+        /* Estilos para modal de registro de entrega - NUEVO */
+        .delivery-modal {
+            z-index: 65;
+        }
+
+        .delivery-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            max-width: 450px;
+            width: 90%;
+            margin: 20vh auto;
+            padding: 0;
+            overflow: hidden;
+            animation: deliverySlideIn 0.3s ease-out;
+        }
+
+        .dark .delivery-content {
+            background: #2d3748;
+            color: #f7fafc;
+        }
+
+        @keyframes deliverySlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .delivery-header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .delivery-icon {
+            width: 3rem;
+            height: 3rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .delivery-form-group {
+            margin-bottom: 1rem;
+        }
+
+        .delivery-form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .dark .delivery-form-group label {
+            color: #f3f4f6;
+        }
+
+        .delivery-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .dark .delivery-input {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+
+        .delivery-input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .delivery-buttons {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .dark .delivery-buttons {
+            background: #1f2937;
+            border-top-color: #374151;
+        }
+
+        .delivery-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .delivery-btn-cancel {
+            background: #6b7280;
+            color: white;
+        }
+
+        .delivery-btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        .delivery-btn-confirm {
+            background: #10b981;
+            color: white;
+        }
+
+        .delivery-btn-confirm:hover {
+            background: #059669;
+        }
+
+        .delivery-btn-skip {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .delivery-btn-skip:hover {
+            background: #d97706;
+        }
     </style>
 </head>
 
@@ -625,7 +908,7 @@
             </div>
         </div>
 
-        <!-- Sales Table -->
+        <!-- Sales Table - MODIFICADA para incluir columna de estado de armazón -->
         <div class="overflow-x-auto shadow-card rounded-lg">
             <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
                 <thead>
@@ -638,6 +921,14 @@
                         <th class="py-3 px-4 text-left bg-primary text-white">Pendiente</th>
                         <th class="py-3 px-4 text-left bg-primary text-white">Estado</th>
                         <th class="py-3 px-4 text-left bg-primary text-white">Convenio</th>
+                        <th class="py-3 px-4 text-left bg-primary text-white">
+            Estado Armazón
+            <span class="text-xs block font-normal opacity-80">(Solo armazones)</span>
+        </th>
+        <th class="py-3 px-4 text-left bg-primary text-white">
+            Entrega
+            <span class="text-xs block font-normal opacity-80">(Solo armazones)</span>
+        </th>
                         <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
                     </tr>
                 </thead>
@@ -705,7 +996,6 @@
                 </div>
 
                 <!-- Convenio Info -->
-                <!-- Convenio Info - Sección modificada con información de crédito -->
                 <div id="convenioInfo" class="convenio-info" style="display: none;">
                     <div
                         class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4 space-y-4">
@@ -912,6 +1202,132 @@
                     <button type="submit"
                         class="btn-primary py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Registrar
                         venta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Estado de Armazón - AGREGADO -->
+    <div id="frameStatusModal" class="modal frame-status-modal">
+        <div class="frame-status-content">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Cambiar Estado del Armazón</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Selecciona el nuevo estado para el armazón</p>
+            </div>
+            
+            <div class="p-0">
+                <div class="status-option" data-status="apartado">
+                    <div class="status-icon apartado">A</div>
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white">Apartado</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">El cliente apartó el armazón sin abono inicial</p>
+                    </div>
+                </div>
+                
+                <div class="status-option" data-status="en-proceso">
+                    <div class="status-icon en-proceso">P</div>
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white">En Proceso</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Se realizó el abono inicial, fabricación en proceso</p>
+                    </div>
+                </div>
+                
+                <div class="status-option" data-status="pendiente-entrega">
+                    <div class="status-icon pendiente-entrega">L</div>
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white">Pendiente de Entrega</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Los lentes están listos para entregar</p>
+                    </div>
+                </div>
+                
+                <div class="status-option" data-status="entregado">
+                    <div class="status-icon entregado">✓</div>
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white">Entregado</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">El armazón fue entregado al cliente</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                <button id="cancelFrameStatus" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Entrega - NUEVO -->
+    <div id="deliveryConfirmModal" class="modal delivery-modal">
+        <div class="delivery-content">
+            <div class="delivery-header">
+                <div class="delivery-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold">Confirmar Entrega</h3>
+                <p class="text-sm opacity-90">¿Deseas registrar quién recibió el armazón?</p>
+            </div>
+            
+            <div class="p-6">
+                <p class="text-gray-600 dark:text-gray-300 text-center mb-6">
+                    Esto te permitirá llevar un mejor control de las entregas y verificar que el armazón fue recogido por la persona correcta.
+                </p>
+                
+                <div class="delivery-buttons">
+                    <button id="skipRecipientBtn" class="delivery-btn delivery-btn-skip">
+                        Omitir
+                    </button>
+                    <button id="cancelDeliveryBtn" class="delivery-btn delivery-btn-cancel">
+                        Cancelar
+                    </button>
+                    <button id="registerRecipientBtn" class="delivery-btn delivery-btn-confirm">
+                        Registrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Registro de Receptor - NUEVO -->
+    <div id="recipientModal" class="modal delivery-modal">
+        <div class="delivery-content">
+            <div class="delivery-header">
+                <div class="delivery-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold">Registrar Receptor</h3>
+                <p class="text-sm opacity-90">Ingresa el nombre de quien recibió el armazón</p>
+            </div>
+            
+            <form id="recipientForm" class="p-6">
+                <div class="delivery-form-group">
+                    <label for="recipientName" class="block mb-2 font-medium">
+                        Nombre completo de quien recibe
+                    </label>
+                    <input 
+                        type="text" 
+                        id="recipientName" 
+                        class="delivery-input" 
+                        placeholder="Ej: María González López"
+                        required
+                        maxlength="100"
+                    >
+                    <p class="text-xs text-gray-500 mt-1">
+                        Este nombre se guardará en los detalles de la venta para referencia futura
+                    </p>
+                </div>
+                
+                <div class="delivery-buttons">
+                    <button type="button" id="cancelRecipientBtn" class="delivery-btn delivery-btn-cancel">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="delivery-btn delivery-btn-confirm">
+                        Confirmar Entrega
+                    </button>
                 </div>
             </form>
         </div>
