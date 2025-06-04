@@ -5,13 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ah Kim Pech - Convenios</title>
-    <meta name="description" content="Sistema web para la gestión de ópticas: inventario, ventas, clientes, convenios y usuarios. Servicios Ópticos Ah Kim Pech.">
-    <meta name="keywords" content="óptica, inventario, ventas, clientes, convenios, usuarios, Ah Kim Pech, sistema óptica">
+    <meta name="description"
+        content="Sistema web para la gestión de ópticas: inventario, ventas, clientes, convenios y usuarios. Servicios Ópticos Ah Kim Pech.">
+    <meta name="keywords"
+        content="óptica, inventario, ventas, clientes, convenios, usuarios, Ah Kim Pech, sistema óptica">
     <meta name="author" content="Servicios Ópticos Ah Kim Pech">
 
     <!-- Open Graph -->
     <meta property="og:title" content="Servicios Ópticos Ah Kim Pech">
-    <meta property="og:description" content="Gestiona tu óptica con nuestro sistema web: inventario, ventas, clientes, convenios y más.">
+    <meta property="og:description"
+        content="Gestiona tu óptica con nuestro sistema web: inventario, ventas, clientes, convenios y más.">
     <meta property="og:image" content="https://opticaahkimpech.vercel.app/assets/img/iconoAKPV1.png">
     <meta property="og:url" content="https://opticaahkimpech.vercel.app/">
     <meta property="og:type" content="website">
@@ -19,7 +22,8 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Servicios Ópticos Ah Kim Pech">
-    <meta name="twitter:description" content="Gestiona tu óptica con nuestro sistema web: inventario, ventas, clientes, convenios y más.">
+    <meta name="twitter:description"
+        content="Gestiona tu óptica con nuestro sistema web: inventario, ventas, clientes, convenios y más.">
     <meta name="twitter:image" content="https://opticaahkimpech.vercel.app/assets/img/iconoAKPV1.png">
 
     <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/iconoAKPV1.png" />
@@ -296,6 +300,53 @@
             pointer-events: none;
         }
 
+        /* Sucursal card styles */
+        .sucursal-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .sucursal-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 2px 8px rgba(240, 157, 31, 0.1);
+        }
+
+        .dark .sucursal-card {
+            border-color: #4b5563;
+            background-color: #374151;
+        }
+
+        .dark .sucursal-card:hover {
+            border-color: var(--primary-color);
+        }
+
+        /* Expandable row styles */
+        .expandable-row {
+            cursor: pointer;
+        }
+
+        .expandable-content {
+            display: none;
+            background-color: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .dark .expandable-content {
+            background-color: #1e293b;
+            border-top-color: #475569;
+        }
+
+        .expand-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+
         /* Print styles */
         @media print {
 
@@ -396,9 +447,9 @@
                             <th class="py-3 px-4 text-left bg-primary text-white">Email</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Descuento</th>
                             <th class="py-3 px-4 text-left bg-primary text-white">Límite por Miembro</th>
-                            <th class="py-3 px-4 text-left bg-primary text-white">Deuda Total</th>
-                            <th class="py-3 px-4 text-left bg-primary text-white">Sucursales</th>
-                            <th class="py-3 px-4 text-left bg-primary text-white">Miembros</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Total Sucursales</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Total Miembros</th>
+                            <th class="py-3 px-4 text-left bg-primary text-white">Ver Sucursales</th>
                             <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
                         </tr>
                     </thead>
@@ -596,6 +647,22 @@
                 <!-- Sucursales -->
                 <div class="form-group">
                     <label class="block mb-1 font-medium">Sucursales</label>
+                    <div
+                        class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-3">
+                        <div class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-2" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                                <strong>Importante:</strong> Cada sucursal maneja sus pagos de forma independiente. Los
+                                empleados de cada sucursal solo pueden usar el crédito asignado a su sucursal
+                                específica.
+                            </p>
+                        </div>
+                    </div>
                     <div id="sucursalesContainer" class="space-y-2 mb-2">
                         <!-- Sucursales se agregarán dinámicamente -->
                         <div class="sucursal-item flex items-center space-x-2">
@@ -778,7 +845,7 @@
     <!-- Detalle Empresa Modal -->
     <div id="detalleEmpresaModal" class="modal">
         <div
-            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-4xl mx-auto mt-10 rounded-lg shadow-modal p-6">
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-3/4 max-w-5xl mx-auto mt-10 rounded-lg shadow-modal p-6">
             <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
                 <h3 id="detalleEmpresaTitle" class="text-xl font-semibold">Detalle de Empresa</h3>
                 <span class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
@@ -813,10 +880,6 @@
                             <p><span class="font-semibold">Límite por Miembro:</span> <span
                                     id="detalleEmpresaLimiteCredito">$0.00</span></p>
                         </div>
-                        <div class="mb-2">
-                            <p><span class="font-semibold">Deuda Total:</span> <span
-                                    id="detalleEmpresaDeudaTotal">$0.00</span></p>
-                        </div>
                         <div class="col-span-2 mb-2">
                             <p><span class="font-semibold">Dirección:</span> <span id="detalleEmpresaDireccion">-</span>
                             </p>
@@ -824,26 +887,50 @@
                     </div>
                 </div>
 
-                <!-- Sucursales -->
-                <div>
-                    <h4 class="text-lg font-semibold mb-3">Sucursales</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="detalleSucursalesContainer">
-                        <!-- Se cargará dinámicamente -->
+                <!-- Alerta importante sobre sucursales independientes -->
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div class="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-6 w-6 text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <h4 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">Gestión
+                                Independiente por Sucursal</h4>
+                            <p class="text-blue-700 dark:text-blue-300 text-sm leading-relaxed">
+                                Cada sucursal de esta empresa maneja sus pagos de forma completamente independiente.
+                                Los empleados de <strong>CFE Termo</strong> solo pueden usar el crédito asignado a esa
+                                sucursal,
+                                y los empleados de <strong>CFE Fundadores</strong> solo pueden usar el crédito de su
+                                sucursal.
+                                No hay transferencia de crédito entre sucursales.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Resumen por Sucursal -->
+                <!-- Resumen por Sucursal (Mejorado) -->
                 <div>
-                    <h4 class="text-lg font-semibold mb-3">Resumen de Deuda por Sucursal</h4>
+                    <h4 class="text-lg font-semibold mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        Cuentas Independientes por Sucursal
+                    </h4>
                     <div class="overflow-x-auto">
                         <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
                             <thead>
                                 <tr>
-                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Sucursal</th>
-                                    <th class="py-2 px-4 text-left bg-primary text-white">Miembros</th>
-                                    <th class="py-2 px-4 text-left bg-primary text-white">Deuda Total</th>
-                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Promedio por
-                                        Miembro</th>
+                                    <th class="py-3 px-4 text-left bg-primary text-white rounded-tl-lg">Sucursal</th>
+                                    <th class="py-3 px-4 text-left bg-primary text-white">Miembros Activos</th>
+                                    <th class="py-3 px-4 text-left bg-primary text-white">Deuda de la Sucursal</th>
+                                    <th class="py-3 px-4 text-left bg-primary text-white">Promedio por Miembro</th>
+                                    <th class="py-3 px-4 text-left bg-primary text-white">Estado de Cuenta</th>
+                                    <th class="py-3 px-4 text-left bg-primary text-white rounded-tr-lg">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="detalleResumenSucursalesBody"
@@ -854,10 +941,17 @@
                     </div>
                 </div>
 
-                <!-- Miembros -->
+                <!-- Miembros por Sucursal -->
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <h4 class="text-lg font-semibold">Miembros</h4>
+                        <h4 class="text-lg font-semibold flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            Miembros por Sucursal
+                        </h4>
                         <button id="detalleAddMiembroBtn"
                             class="text-sm bg-primary hover:bg-primary/80 text-white py-1 px-3 rounded flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
@@ -927,6 +1021,162 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalle de Sucursal -->
+    <div id="detalleSucursalModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-4/5 max-w-6xl mx-auto mt-10 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Detalle de Sucursal</h3>
+                <span id="detalleSucursalCloseBtn"
+                    class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Información de la sucursal -->
+                <div class="bg-lightGray dark:bg-gray-700 p-5 rounded-lg">
+                    <div class="grid md:grid-cols-2 gap-x-4 gap-y-2">
+                        <div class="col-span-2">
+                            <h4 id="detalleSucursalNombre"
+                                class="text-xl font-semibold text-primary dark:text-primary mb-3">
+                                Nombre de la Sucursal
+                            </h4>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Empresa:</span> <span id="detalleSucursalEmpresa">-</span>
+                            </p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Miembros:</span> <span id="detalleSucursalMiembros">0</span>
+                            </p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Deuda Total:</span> <span
+                                    id="detalleSucursalDeudaTotal">$0.00</span></p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Pagos Realizados:</span> <span
+                                    id="detalleSucursalPagosRealizados" class="text-green-600">$0.00</span></p>
+                        </div>
+                        <div class="mb-2">
+                            <p><span class="font-semibold">Deuda Neta:</span> <span id="detalleSucursalDeudaNeta"
+                                    class="font-bold">$0.00</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Miembros de la sucursal -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-3">Miembros de la Sucursal</h4>
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                            <thead>
+                                <tr>
+                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Cliente</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Límite Crédito</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Crédito Usado</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Crédito Disponible</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detalleSucursalMiembrosBody"
+                                class="divide-y divide-mediumGray dark:divide-gray-700">
+                                <!-- Se cargará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Historial de pagos -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-lg font-semibold">Historial de Pagos</h4>
+                        <button id="registrarPagoBtn"
+                            class="bg-primary hover:bg-primary/80 text-white py-2 px-4 rounded flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Registrar Pago
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table w-full bg-white dark:bg-gray-800 rounded-lg">
+                            <thead>
+                                <tr>
+                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tl-lg">Fecha</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Monto</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white">Método</th>
+                                    <th class="py-2 px-4 text-left bg-primary text-white rounded-tr-lg">Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detalleSucursalPagosBody"
+                                class="divide-y divide-mediumGray dark:divide-gray-700">
+                                <!-- Se cargará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Registrar Pago -->
+    <div id="pagoSucursalModal" class="modal">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 w-11/12 md:w-2/3 lg:w-1/2 max-w-xl mx-auto mt-16 rounded-lg shadow-modal p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-mediumGray dark:border-gray-700 pb-3">
+                <h3 class="text-xl font-semibold">Registrar Pago de Sucursal</h3>
+                <span id="pagoSucursalCloseBtn"
+                    class="close text-2xl cursor-pointer hover:text-gray-600 dark:hover:text-gray-300">&times;</span>
+            </div>
+            <form id="pagoSucursalForm" class="space-y-4">
+                <div class="form-group bg-lightGray dark:bg-gray-700 p-4 rounded-lg">
+                    <h4 class="font-medium mb-2">Información de la sucursal</h4>
+                    <p><strong>Empresa:</strong> <span id="pagoSucursalEmpresa">-</span></p>
+                    <p><strong>Sucursal:</strong> <span id="pagoSucursalNombreSucursal">-</span></p>
+                    <p><strong>Deuda actual:</strong> <span id="pagoSucursalDeudaActual"
+                            class="text-red-600 font-semibold">$0.00</span></p>
+                </div>
+
+                <div class="form-group">
+                    <label for="pagoSucursalMonto" class="block mb-1 font-medium">Monto del pago *</label>
+                    <input type="number" id="pagoSucursalMonto" min="0" step="0.01"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pagoSucursalMetodo" class="block mb-1 font-medium">Método de pago *</label>
+                    <select id="pagoSucursalMetodo"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        required>
+                        <option value="">Seleccione un método</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="tarjeta">Tarjeta</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="pagoSucursalNotas" class="block mb-1 font-medium">Notas adicionales</label>
+                    <textarea id="pagoSucursalNotas" rows="3"
+                        class="w-full p-2 border border-mediumGray rounded-md text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                        placeholder="Información adicional sobre el pago..."></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-mediumGray dark:border-gray-700">
+                    <button type="button" id="pagoSucursalCancelBtn"
+                        class="py-2 px-4 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="py-2 px-4 bg-primary hover:bg-primary/80 text-white rounded transition-colors">Registrar
+                        Pago</button>
+                </div>
+            </form>
         </div>
     </div>
 
