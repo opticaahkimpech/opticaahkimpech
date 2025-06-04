@@ -23,7 +23,9 @@ let empresas = []
 let clientes = []
 let miembros = []
 let ventas = []
+let pagosSucursales = []
 let currentEmpresaId = null
+let currentSucursalData = null
 
 // Constantes y estados para paginación
 const ITEMS_PER_PAGE = 5
@@ -64,6 +66,16 @@ let filtrosMiembros = {
 
 let activeTab = "empresas"
 
+// Variable para controlar eventos automáticos
+let preventAutoEvents = false
+
+const VALID_EMAIL_DOMAINS = [
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "mac.com", "aol.com",
+  "protonmail.com", "zoho.com", "yandex.com", "mail.com", "gmx.com", "fastmail.com",
+  "uady.mx", "itmerida.mx", "anahuac.mx", "tec.mx", "unam.mx", "ipn.mx", "udg.mx", "buap.mx", "uanl.mx", "uas.mx", "uacam.mx",
+  "gob.mx", "imss.gob.mx", "issste.gob.mx", "cfe.mx", "pemex.com", "banxico.org.mx", "sat.gob.mx", "sep.gob.mx"
+]
+
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("Página de convenios cargada")
 
@@ -73,9 +85,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     listenEmpresasRealtime()
     listenMiembrosRealtime()
+    listenPagosSucursalesRealtime()
 
     // Cargar datos necesarios
-    await Promise.all([loadClientes(), loadVentas()])
+    await Promise.all([loadClientes(), loadVentas(), loadPagosSucursales()])
 
     // Configurar eventos para las pestañas
     setupTabEvents()
@@ -95,6 +108,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Configurar eventos para la paginación
     setupPaginationEvents()
 
+    // Cargar validación de formularios
+    setupEmpresaFormValidation()
+
     // Configurar evento para el botón "addClienteFromMiembroBtn"
     const addClienteFromMiembroBtn = document.getElementById("addClienteFromMiembroBtn")
     if (addClienteFromMiembroBtn) {
@@ -103,6 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const modal = document.getElementById("clientModal")
         if (modal) {
           modal.style.display = "block"
+          modal.style.zIndex = "2000"
           document.getElementById("modalTitle").textContent = "Nuevo Cliente (Desde Convenio)"
           document.getElementById("clientForm").reset()
           document.getElementById("clientId").value = ""
@@ -190,6 +207,22 @@ function listenMiembrosRealtime() {
   })
 }
 
+// Escuchar cambios en la base de datos de pagos de sucursales
+function listenPagosSucursalesRealtime() {
+  const pagosRef = collection(db, "pagosSucursales")
+  const q = query(pagosRef, orderBy("fecha", "desc"))
+  onSnapshot(q, (querySnapshot) => {
+    pagosSucursales = []
+    querySnapshot.forEach((doc) => {
+      pagosSucursales.push({
+        id: doc.id,
+        ...doc.data(),
+      })
+    })
+    console.log("Pagos de sucursales actualizados en tiempo real:", pagosSucursales.length)
+  })
+}
+
 // Función para verificar y crear colecciones necesarias
 async function checkAndCreateConveniosCollection() {
   try {
@@ -205,6 +238,12 @@ async function checkAndCreateConveniosCollection() {
     const miembrosSnapshot = await getDocs(collection(db, "miembrosConvenio"))
     if (miembrosSnapshot.empty) {
       console.log("Creando colección de miembros de convenio...")
+    }
+
+    // Verificar si existe la colección de pagos de sucursales
+    const pagosSnapshot = await getDocs(collection(db, "pagosSucursales"))
+    if (pagosSnapshot.empty) {
+      console.log("Creando colección de pagos de sucursales...")
     }
 
     console.log("Verificación de colecciones de convenios completada")
@@ -392,6 +431,30 @@ async function loadVentas() {
   }
 }
 
+// Función para cargar pagos de sucursales
+async function loadPagosSucursales() {
+  try {
+    const pagosRef = collection(db, "pagosSucursales")
+    const q = query(pagosRef, orderBy("fecha", "desc"))
+    const querySnapshot = await getDocs(q)
+
+    pagosSucursales = []
+    querySnapshot.forEach((doc) => {
+      pagosSucursales.push({
+        id: doc.id,
+        ...doc.data(),
+      })
+    })
+
+    console.log("Pagos de sucursales cargados:", pagosSucursales.length)
+    return pagosSucursales
+  } catch (error) {
+    console.error("Error al cargar pagos de sucursales:", error)
+    showToast("Error al cargar pagos de sucursales", "danger")
+    return []
+  }
+}
+
 // Función para calcular la deuda de una empresa por sucursal
 function calcularDeudaEmpresaPorSucursal(empresaId) {
   const miembrosEmpresa = miembros.filter((m) => m.empresaId === empresaId)
@@ -412,6 +475,24 @@ function calcularDeudaEmpresaPorSucursal(empresaId) {
   })
 
   return deudaPorSucursal
+}
+
+// Función para calcular pagos realizados por una sucursal
+function calcularPagosSucursal(empresaId, sucursal) {
+  const pagosSucursal = pagosSucursales.filter(
+    (pago) => pago.empresaId === empresaId && pago.sucursal === sucursal
+  )
+
+  return pagosSucursal.reduce((total, pago) => total + (pago.monto || 0), 0)
+}
+
+// Función para calcular la deuda neta de una sucursal (deuda - pagos)
+function calcularDeudaNetaSucursal(empresaId, sucursal) {
+  const deudaPorSucursal = calcularDeudaEmpresaPorSucursal(empresaId)
+  const deudaTotal = deudaPorSucursal[sucursal]?.deudaTotal || 0
+  const pagosRealizados = calcularPagosSucursal(empresaId, sucursal)
+
+  return Math.max(0, deudaTotal - pagosRealizados)
 }
 
 // Función para calcular el crédito usado por un miembro
@@ -552,8 +633,240 @@ function obtenerEstadoMiembro(miembroId) {
   return "activo"
 }
 
+// Función para alternar la vista expandida de sucursales
+function toggleSucursalesView(empresaId) {
+  const expandableContent = document.getElementById(`sucursales-${empresaId}`)
+  const expandIcon = document.getElementById(`expand-icon-${empresaId}`)
 
-// Función para actualizar la tabla de empresas
+  if (expandableContent && expandIcon) {
+    if (expandableContent.style.display === 'none' || expandableContent.style.display === '') {
+      expandableContent.style.display = 'table-row'
+      expandIcon.classList.add('expanded')
+      loadSucursalesDetails(empresaId)
+    } else {
+      expandableContent.style.display = 'none'
+      expandIcon.classList.remove('expanded')
+    }
+  }
+}
+
+// Función para cargar detalles de sucursales
+function loadSucursalesDetails(empresaId) {
+  const empresa = empresas.find(e => e.id === empresaId)
+  if (!empresa) return
+
+  const deudaPorSucursal = calcularDeudaEmpresaPorSucursal(empresaId)
+  const sucursalesContainer = document.getElementById(`sucursales-content-${empresaId}`)
+
+  if (!sucursalesContainer) return
+
+  let sucursalesHTML = ''
+
+  if (empresa.sucursales && empresa.sucursales.length > 0) {
+    empresa.sucursales.forEach(sucursal => {
+      const datos = deudaPorSucursal[sucursal] || { miembros: 0, deudaTotal: 0 }
+      const pagosRealizados = calcularPagosSucursal(empresaId, sucursal)
+      const deudaNeta = Math.max(0, datos.deudaTotal - pagosRealizados)
+      const promedio = datos.miembros > 0 ? datos.deudaTotal / datos.miembros : 0
+      const estadoCuenta = deudaNeta > 0 ? 'Con Deuda' : 'Sin Deuda'
+      const badgeClass = deudaNeta > 0 ? 'badge-warning' : 'badge-success'
+
+      sucursalesHTML += `
+        <div class="sucursal-card">
+          <div class="flex justify-between items-start mb-2">
+            <h5 class="font-semibold text-primary">${sucursal}</h5>
+            <span class="badge ${badgeClass}">Cuenta independiente</span>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+            <div>
+              <span class="text-gray-600 dark:text-gray-400">Miembros:</span>
+              <span class="font-medium">${datos.miembros}</span>
+            </div>
+            <div>
+              <span class="text-gray-600 dark:text-gray-400">Deuda Total:</span>
+              <span class="font-medium">$${datos.deudaTotal.toFixed(2)}</span>
+            </div>
+            <div>
+              <span class="text-gray-600 dark:text-gray-400">Pagos:</span>
+              <span class="font-medium text-green-600">$${pagosRealizados.toFixed(2)}</span>
+            </div>
+            <div>
+              <span class="text-gray-600 dark:text-gray-400">Deuda Neta:</span>
+              <span class="font-medium ${deudaNeta > 0 ? 'text-red-600' : 'text-green-600'}">$${deudaNeta.toFixed(2)}</span>
+            </div>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-500">Estado: ${estadoCuenta}</span>
+            <button onclick="verDetallesSucursal('${empresaId}', '${sucursal}')" class="text-primary hover:text-primary/80 text-sm font-medium">
+              Ver detalles completos
+            </button>
+          </div>
+        </div>
+      `
+    })
+  } else {
+    sucursalesHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-4">No hay sucursales registradas</p>'
+  }
+
+  sucursalesContainer.innerHTML = sucursalesHTML
+}
+
+// Función para ver detalles completos de una sucursal
+function verDetallesSucursal(empresaId, sucursal) {
+  const empresa = empresas.find(e => e.id === empresaId)
+  if (!empresa) return
+
+  // Guardar datos actuales de la sucursal
+  currentSucursalData = {
+    empresaId,
+    sucursal,
+    empresaNombre: empresa.nombre
+  }
+
+  // Calcular datos de la sucursal
+  const deudaPorSucursal = calcularDeudaEmpresaPorSucursal(empresaId)
+  const datos = deudaPorSucursal[sucursal] || { miembros: 0, deudaTotal: 0 }
+  const pagosRealizados = calcularPagosSucursal(empresaId, sucursal)
+  const deudaNeta = Math.max(0, datos.deudaTotal - pagosRealizados)
+
+  // Mostrar modal de detalle de sucursal
+  const modal = document.getElementById("detalleSucursalModal")
+  if (modal) {
+    modal.style.display = "block"
+
+    // Llenar información de la sucursal
+    document.getElementById("detalleSucursalNombre").textContent = sucursal
+    document.getElementById("detalleSucursalEmpresa").textContent = empresa.nombre
+    document.getElementById("detalleSucursalMiembros").textContent = datos.miembros
+    document.getElementById("detalleSucursalDeudaTotal").textContent = `$${datos.deudaTotal.toFixed(2)}`
+    document.getElementById("detalleSucursalPagosRealizados").textContent = `$${pagosRealizados.toFixed(2)}`
+    document.getElementById("detalleSucursalDeudaNeta").textContent = `$${deudaNeta.toFixed(2)}`
+
+    // Cargar miembros de la sucursal
+    loadMiembrosSucursal(empresaId, sucursal)
+
+    // Cargar historial de pagos
+    loadHistorialPagosSucursal(empresaId, sucursal)
+  }
+}
+
+// Función para cargar miembros de una sucursal específica
+function loadMiembrosSucursal(empresaId, sucursal) {
+  const miembrosSucursal = miembros.filter(m => m.empresaId === empresaId && m.sucursal === sucursal)
+  const tbody = document.getElementById("detalleSucursalMiembrosBody")
+
+  if (!tbody) return
+
+  tbody.innerHTML = ""
+
+  if (miembrosSucursal.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center">No hay miembros en esta sucursal</td></tr>'
+    return
+  }
+
+  miembrosSucursal.forEach(miembro => {
+    const cliente = clientes.find(c => c.id === miembro.clienteId)
+    const clienteNombre = cliente ? cliente.nombre : "Cliente no encontrado"
+    const creditoUsado = calcularCreditoUsadoMiembro(miembro.clienteId)
+    const creditoDisponible = Math.max(0, (miembro.limiteCredito || 0) - creditoUsado)
+
+    const row = document.createElement("tr")
+    row.className = "hover:bg-gray-50 dark:hover:bg-gray-700"
+    row.innerHTML = `
+      <td class="py-2 px-4">${clienteNombre}</td>
+      <td class="py-2 px-4">$${(miembro.limiteCredito || 0).toFixed(2)}</td>
+      <td class="py-2 px-4">$${creditoUsado.toFixed(2)}</td>
+      <td class="py-2 px-4">$${creditoDisponible.toFixed(2)}</td>
+      <td class="py-2 px-4">
+        <span class="status-${obtenerEstadoMiembro(miembro.id)}">
+          ${obtenerEstadoMiembro(miembro.id) === "activo" ? "Activo" : "Límite Excedido"}
+        </span>
+      </td>
+    `
+    tbody.appendChild(row)
+  })
+}
+
+// Función para cargar historial de pagos de una sucursal
+function loadHistorialPagosSucursal(empresaId, sucursal) {
+  const pagosSucursal = pagosSucursales.filter(p => p.empresaId === empresaId && p.sucursal === sucursal)
+  const tbody = document.getElementById("detalleSucursalPagosBody")
+
+  if (!tbody) return
+
+  tbody.innerHTML = ""
+
+  if (pagosSucursal.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center">No hay pagos registrados</td></tr>'
+    return
+  }
+
+  pagosSucursal.forEach(pago => {
+    const fecha = pago.fecha instanceof Timestamp ? pago.fecha.toDate() : new Date(pago.fecha)
+
+    const row = document.createElement("tr")
+    row.className = "hover:bg-gray-50 dark:hover:bg-gray-700"
+    row.innerHTML = `
+      <td class="py-2 px-4">${fecha.toLocaleDateString()}</td>
+      <td class="py-2 px-4">$${(pago.monto || 0).toFixed(2)}</td>
+      <td class="py-2 px-4">${pago.metodoPago || "No especificado"}</td>
+      <td class="py-2 px-4">${pago.notas || "-"}</td>
+    `
+    tbody.appendChild(row)
+  })
+}
+
+// Función para registrar un pago de sucursal
+async function registrarPagoSucursal() {
+  try {
+    const monto = parseFloat(document.getElementById("pagoSucursalMonto").value)
+    const metodoPago = document.getElementById("pagoSucursalMetodo").value
+    const notas = document.getElementById("pagoSucursalNotas").value
+
+    if (!monto || monto <= 0) {
+      showToast("Por favor, ingrese un monto válido", "warning")
+      return
+    }
+
+    if (!metodoPago) {
+      showToast("Por favor, seleccione un método de pago", "warning")
+      return
+    }
+
+    const pagoData = {
+      empresaId: currentSucursalData.empresaId,
+      sucursal: currentSucursalData.sucursal,
+      empresaNombre: currentSucursalData.empresaNombre,
+      monto: monto,
+      metodoPago: metodoPago,
+      notas: notas || "",
+      fecha: new Date(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }
+
+    await addDoc(collection(db, "pagosSucursales"), pagoData)
+
+    showToast("Pago registrado correctamente", "success")
+
+    // Cerrar modal de pago
+    document.getElementById("pagoSucursalModal").style.display = "none"
+
+    // Recargar datos
+    await loadPagosSucursales()
+
+    // Actualizar vista de detalle de sucursal si está abierta
+    if (currentSucursalData) {
+      verDetallesSucursal(currentSucursalData.empresaId, currentSucursalData.sucursal)
+    }
+
+  } catch (error) {
+    console.error("Error al registrar pago:", error)
+    showToast("Error al registrar el pago", "danger")
+  }
+}
+
+// Función para actualizar la tabla de empresas (MEJORADA)
 function updateEmpresasTable() {
   const tableBody = document.getElementById("empresasTableBody")
   if (!tableBody) return
@@ -579,15 +892,9 @@ function updateEmpresasTable() {
     // Contar miembros
     const miembrosCount = miembros.filter((m) => m.empresaId === empresa.id).length
 
-    // Calcular deuda total de la empresa
-    const deudaTotal = miembros
-      .filter((m) => m.empresaId === empresa.id)
-      .reduce((total, miembro) => {
-        return total + calcularCreditoUsadoMiembro(miembro.clienteId)
-      }, 0)
-
+    // Crear fila principal de la empresa
     const row = document.createElement("tr")
-    row.className = "hover:bg-gray-50 dark:hover:bg-gray-700"
+    row.className = "hover:bg-gray-50 dark:hover:bg-gray-700 expandable-row"
 
     row.innerHTML = `
       <td class="py-3 px-4">${empresa.nombre || "-"}</td>
@@ -596,12 +903,19 @@ function updateEmpresasTable() {
       <td class="py-3 px-4">${empresa.email || "-"}</td>
       <td class="py-3 px-4">${empresa.descuento || 40}%</td>
       <td class="py-3 px-4">$${(empresa.limiteCreditoPorMiembro || 3500).toFixed(2)}</td>
-      <td class="py-3 px-4">$${deudaTotal.toFixed(2)}</td>
       <td class="py-3 px-4">${sucursales.length}</td>
       <td class="py-3 px-4">${miembrosCount}</td>
       <td class="py-3 px-4">
+        <button onclick="toggleSucursalesView('${empresa.id}')" class="flex items-center text-primary hover:text-primary/80 font-medium">
+          <svg id="expand-icon-${empresa.id}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 expand-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+          Ver detalles
+        </button>
+      </td>
+      <td class="py-3 px-4">
         <div class="flex space-x-2">
-          <button class="view-empresa text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" data-id="${empresa.id}" title="Ver detalles">
+          <button class="view-empresa text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" data-id="${empresa.id}" title="Ver detalles completos">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -622,6 +936,30 @@ function updateEmpresasTable() {
     `
 
     tableBody.appendChild(row)
+
+    // Crear fila expandible para sucursales
+    const expandableRow = document.createElement("tr")
+    expandableRow.id = `sucursales-${empresa.id}`
+    expandableRow.className = "expandable-content"
+    expandableRow.style.display = "none"
+
+    expandableRow.innerHTML = `
+      <td colspan="10" class="py-4 px-6">
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <h4 class="font-semibold mb-3 text-gray-800 dark:text-gray-200 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            Sucursales - Cuentas Independientes
+          </h4>
+          <div id="sucursales-content-${empresa.id}" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Se cargará dinámicamente -->
+          </div>
+        </div>
+      </td>
+    `
+
+    tableBody.appendChild(expandableRow)
   })
 
   // Configurar eventos para los botones
@@ -675,7 +1013,9 @@ function updateMiembrosTable() {
 
     row.innerHTML = `
       <td class="py-3 px-4">${empresaNombre}</td>
-      <td class="py-3 px-4">${miembro.sucursal || "-"}</td>
+      <td class="py-3 px-4">
+        <span class="badge badge-success">${miembro.sucursal || "-"}</span>
+      </td>
       <td class="py-3 px-4">${clienteNombre}</td>
       <td class="py-3 px-4">$${limiteCredito.toFixed(2)}</td>
       <td class="py-3 px-4">$${creditoUsado.toFixed(2)}</td>
@@ -884,6 +1224,118 @@ function setupTabEvents() {
   }
 }
 
+// Validación en tiempo real para empresaModal
+function setupEmpresaFormValidation() {
+  const nombreInput = document.getElementById("empresaNombre")
+  const telefonoInput = document.getElementById("empresaTelefono")
+  const emailInput = document.getElementById("empresaEmail")
+
+  // Mensajes de error
+  function setError(input, message) {
+    input.classList.add("border-red-500")
+    input.classList.remove("border-mediumGray")
+    let msg = input.parentElement.querySelector(".input-error-msg")
+    if (!msg) {
+      msg = document.createElement("div")
+      msg.className = "input-error-msg text-xs text-red-600 mt-1"
+      input.parentElement.appendChild(msg)
+    }
+    msg.textContent = message
+  }
+  function clearError(input) {
+    input.classList.remove("border-red-500")
+    input.classList.add("border-mediumGray")
+    const msg = input.parentElement.querySelector(".input-error-msg")
+    if (msg) msg.remove()
+  }
+
+  // Validar nombre único
+  nombreInput.addEventListener("input", () => {
+    const value = nombreInput.value.trim().toLowerCase()
+    const existe = empresas.some(e => e.nombre && e.nombre.trim().toLowerCase() === value)
+    if (existe) {
+      setError(nombreInput, "Ya existe una empresa con este nombre.")
+    } else if (value.length < 3) {
+      setError(nombreInput, "El nombre debe tener al menos 3 caracteres.")
+    } else {
+      clearError(nombreInput)
+    }
+  })
+
+  // Validar teléfono
+  telefonoInput.addEventListener("input", () => {
+    const value = telefonoInput.value.replace(/\D/g, "")
+    if (!/^[2-9]\d{9,}$/.test(value)) {
+      setError(telefonoInput, "El teléfono debe tener al menos 10 dígitos y empezar con 2-9.")
+    } else {
+      clearError(telefonoInput)
+    }
+  })
+
+  // Validar email
+  emailInput.addEventListener("input", () => {
+    const value = emailInput.value.trim()
+    if (value.length === 0) {
+      clearError(emailInput)
+      return
+    }
+    const emailParts = value.split("@")
+    if (emailParts.length !== 2) {
+      setError(emailInput, "Correo no válido.")
+      return
+    }
+    const domain = emailParts[1].toLowerCase()
+    const validDomain = VALID_EMAIL_DOMAINS.some(d => domain.endsWith(d))
+    if (!validDomain) {
+      setError(emailInput, "Dominio de correo no permitido.")
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setError(emailInput, "Formato de correo no válido.")
+    } else {
+      clearError(emailInput)
+    }
+  })
+
+  // Validación final al enviar
+  const form = document.getElementById("empresaForm")
+  form.addEventListener("submit", (e) => {
+    let valid = true
+    // Nombre
+    const nombreVal = nombreInput.value.trim().toLowerCase()
+    if (empresas.some(e => e.nombre && e.nombre.trim().toLowerCase() === nombreVal)) {
+      setError(nombreInput, "Ya existe una empresa con este nombre.")
+      valid = false
+    }
+    if (nombreVal.length < 3) {
+      setError(nombreInput, "El nombre debe tener al menos 3 caracteres.")
+      valid = false
+    }
+    // Teléfono
+    const telVal = telefonoInput.value.replace(/\D/g, "")
+    if (!/^[2-9]\d{9,}$/.test(telVal)) {
+      setError(telefonoInput, "El teléfono debe tener al menos 10 dígitos y empezar con 2-9.")
+      valid = false
+    }
+    // Email
+    const emailVal = emailInput.value.trim()
+    if (emailVal.length > 0) {
+      const emailParts = emailVal.split("@")
+      const domain = emailParts.length === 2 ? emailParts[1].toLowerCase() : ""
+      const validDomain = VALID_EMAIL_DOMAINS.some(d => domain.endsWith(d))
+      if (!validDomain) {
+        setError(emailInput, "Dominio de correo no permitido.")
+        valid = false
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+        setError(emailInput, "Formato de correo no válido.")
+        valid = false
+      }
+    }
+    if (!valid) {
+      e.preventDefault()
+      showToast("Corrige los errores antes de guardar.", "danger")
+    }
+  })
+}
+
 // Configurar eventos para los modales
 function setupModalEvents() {
   // Configurar botón para agregar empresa
@@ -919,6 +1371,7 @@ function setupModalEvents() {
       const modal = document.getElementById("miembroModal")
       if (modal) {
         modal.style.display = "block"
+        modal.style.zIndex = "2000"
         document.getElementById("miembroModalTitle").textContent = "Nuevo Miembro"
         document.getElementById("miembroForm").reset()
         document.getElementById("miembroId").value = ""
@@ -943,10 +1396,10 @@ function setupModalEvents() {
   // Configurar botones para cerrar modales
   const closeButtons = document.querySelectorAll(".close, .close-modal")
   closeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      document.querySelectorAll(".modal").forEach((modal) => {
-        modal.style.display = "none"
-      })
+    button.addEventListener("click", function () {
+      // Solo cierra el modal más cercano al botón
+      const modal = this.closest(".modal")
+      if (modal) modal.style.display = "none"
     })
   })
 
@@ -988,7 +1441,7 @@ function setupModalEvents() {
     })
   }
 
-  // Configurar evento para cambiar empresa en el formulario de miembro
+  // Configurar evento para cambiar empresa en el formulario de miembro (CORREGIDO)
   const miembroEmpresa = document.getElementById("miembroEmpresa")
   const miembroSucursal = document.getElementById("miembroSucursal")
   const miembroLimiteCredito = document.getElementById("miembroLimiteCredito")
@@ -1005,13 +1458,17 @@ function setupModalEvents() {
         // Buscar empresa
         const empresa = empresas.find((e) => e.id === empresaId)
         if (empresa) {
-          // Establecer límite de crédito por defecto de la empresa automáticamente
-          if (miembroLimiteCredito) {
+          // Solo mostrar alerta si NO estamos evitando eventos automáticos
+          if (miembroLimiteCredito && !preventAutoEvents) {
             const limiteEmpresa = empresa.limiteCreditoPorMiembro || 3500
             miembroLimiteCredito.value = limiteEmpresa
 
-            // Mostrar mensaje informativo
+            // Mostrar mensaje informativo solo cuando es una acción del usuario
             showToast(`Límite de crédito establecido automáticamente: $${limiteEmpresa.toFixed(2)}`, "info")
+          } else if (miembroLimiteCredito && preventAutoEvents) {
+            // Si estamos evitando eventos automáticos, solo establecer el valor sin mostrar alerta
+            const limiteEmpresa = empresa.limiteCreditoPorMiembro || 3500
+            miembroLimiteCredito.value = limiteEmpresa
           }
 
           // Agregar sucursales al selector
@@ -1050,7 +1507,7 @@ function setupModalEvents() {
     detalleEditEmpresaBtn.addEventListener("click", () => {
       if (currentEmpresaId) {
         // Cerrar modal de detalle
-        document.getElementById("detalleEmpresaModal").style.display = "none"
+        //document.getElementById("detalleEmpresaModal").style.display = "none"
         // Abrir modal de edición
         editEmpresa(currentEmpresaId)
       }
@@ -1061,11 +1518,12 @@ function setupModalEvents() {
     detalleAddMiembroBtn.addEventListener("click", () => {
       if (currentEmpresaId) {
         // Cerrar modal de detalle
-        document.getElementById("detalleEmpresaModal").style.display = "none"
+        //document.getElementById("detalleEmpresaModal").style.display = "none"
         // Abrir modal de nuevo miembro con la empresa preseleccionada
         const modal = document.getElementById("miembroModal")
         if (modal) {
           modal.style.display = "block"
+          modal.style.zIndex = "2000"
           document.getElementById("miembroModalTitle").textContent = "Nuevo Miembro"
           document.getElementById("miembroForm").reset()
           document.getElementById("miembroId").value = ""
@@ -1077,14 +1535,75 @@ function setupModalEvents() {
           const day = String(today.getDate()).padStart(2, "0")
           document.getElementById("miembroFechaRegistro").value = `${year}-${month}-${day}`
 
-          // Preseleccionar empresa
+          // Preseleccionar empresa sin disparar eventos automáticos
+          preventAutoEvents = true
           document.getElementById("miembroEmpresa").value = currentEmpresaId
 
           // Disparar evento change para cargar sucursales
           const event = new Event("change")
           document.getElementById("miembroEmpresa").dispatchEvent(event)
+
+          // Restaurar eventos automáticos después de un breve delay
+          setTimeout(() => {
+            preventAutoEvents = false
+          }, 100)
         }
       }
+    })
+  }
+
+  // Configurar eventos para el modal de detalle de sucursal
+  const detalleSucursalCloseBtn = document.getElementById("detalleSucursalCloseBtn")
+  const registrarPagoBtn = document.getElementById("registrarPagoBtn")
+
+  if (detalleSucursalCloseBtn) {
+    detalleSucursalCloseBtn.addEventListener("click", () => {
+      document.getElementById("detalleSucursalModal").style.display = "none"
+    })
+  }
+
+  if (registrarPagoBtn) {
+    registrarPagoBtn.addEventListener("click", () => {
+      // Mostrar modal de pago
+      const modal = document.getElementById("pagoSucursalModal")
+      if (modal) {
+        modal.style.display = "block"
+        document.getElementById("pagoSucursalForm").reset()
+
+        // Llenar información de la sucursal
+        if (currentSucursalData) {
+          document.getElementById("pagoSucursalEmpresa").textContent = currentSucursalData.empresaNombre
+          document.getElementById("pagoSucursalNombreSucursal").textContent = currentSucursalData.sucursal
+
+          // Calcular y mostrar la deuda actual de la sucursal
+          const deudaNeta = calcularDeudaNetaSucursal(currentSucursalData.empresaId, currentSucursalData.sucursal)
+          document.getElementById("pagoSucursalDeudaActual").textContent = `$${deudaNeta.toFixed(2)}`
+        }
+      }
+    })
+  }
+
+  // Configurar eventos para el modal de pago
+  const pagoSucursalCloseBtn = document.getElementById("pagoSucursalCloseBtn")
+  const pagoSucursalCancelBtn = document.getElementById("pagoSucursalCancelBtn")
+  const pagoSucursalForm = document.getElementById("pagoSucursalForm")
+
+  if (pagoSucursalCloseBtn) {
+    pagoSucursalCloseBtn.addEventListener("click", () => {
+      document.getElementById("pagoSucursalModal").style.display = "none"
+    })
+  }
+
+  if (pagoSucursalCancelBtn) {
+    pagoSucursalCancelBtn.addEventListener("click", () => {
+      document.getElementById("pagoSucursalModal").style.display = "none"
+    })
+  }
+
+  if (pagoSucursalForm) {
+    pagoSucursalForm.addEventListener("submit", async (e) => {
+      e.preventDefault()
+      await registrarPagoSucursal()
     })
   }
 }
@@ -1535,13 +2054,6 @@ async function viewEmpresa(empresaId) {
       const empresa = docSnap.data()
       currentEmpresaId = empresaId
 
-      // Calcular deuda total de la empresa
-      const deudaTotal = miembros
-        .filter((m) => m.empresaId === empresaId)
-        .reduce((total, miembro) => {
-          return total + calcularCreditoUsadoMiembro(miembro.clienteId)
-        }, 0)
-
       // Mostrar modal de detalle de empresa
       const modal = document.getElementById("detalleEmpresaModal")
       if (modal) {
@@ -1555,32 +2067,11 @@ async function viewEmpresa(empresaId) {
         document.getElementById("detalleEmpresaDescuento").textContent = `${empresa.descuento || 40}%`
         document.getElementById("detalleEmpresaLimiteCredito").textContent =
           `$${(empresa.limiteCreditoPorMiembro || 3500).toFixed(2)}`
-        document.getElementById("detalleEmpresaDeudaTotal").textContent = `$${deudaTotal.toFixed(2)}`
         document.getElementById("detalleEmpresaDireccion").textContent = empresa.direccion || "No disponible"
         document.getElementById("detalleEmpresaNotas").textContent = empresa.notas || "No hay notas disponibles"
 
-        // Mostrar sucursales
-        const sucursalesContainer = document.getElementById("detalleSucursalesContainer")
-        if (sucursalesContainer) {
-          sucursalesContainer.innerHTML = ""
-
-          if (empresa.sucursales && empresa.sucursales.length > 0) {
-            empresa.sucursales.forEach((sucursal) => {
-              const sucursalCard = document.createElement("div")
-              sucursalCard.className = "bg-lightGray dark:bg-gray-700 p-3 rounded-lg"
-              sucursalCard.innerHTML = `
-                <p class="font-medium">${sucursal}</p>
-              `
-              sucursalesContainer.appendChild(sucursalCard)
-            })
-          } else {
-            sucursalesContainer.innerHTML =
-              '<p class="text-gray-500 dark:text-gray-400">No hay sucursales registradas</p>'
-          }
-        }
-
-        // Mostrar resumen por sucursal
-        await loadResumenSucursales(empresaId)
+        // Mostrar resumen por sucursal mejorado
+        await loadResumenSucursalesMejorado(empresaId)
 
         // Cargar miembros de la empresa
         await loadEmpresaMiembros(empresaId)
@@ -1595,8 +2086,8 @@ async function viewEmpresa(empresaId) {
   }
 }
 
-// Función para cargar resumen por sucursales
-async function loadResumenSucursales(empresaId) {
+// Función mejorada para cargar resumen por sucursales
+async function loadResumenSucursalesMejorado(empresaId) {
   try {
     const deudaPorSucursal = calcularDeudaEmpresaPorSucursal(empresaId)
     const resumenBody = document.getElementById("detalleResumenSucursalesBody")
@@ -1607,22 +2098,41 @@ async function loadResumenSucursales(empresaId) {
     resumenBody.innerHTML = ""
 
     if (Object.keys(deudaPorSucursal).length === 0) {
-      resumenBody.innerHTML = '<tr><td colspan="4" class="py-4 text-center">No hay datos de sucursales</td></tr>'
+      resumenBody.innerHTML = '<tr><td colspan="6" class="py-4 text-center">No hay datos de sucursales</td></tr>'
       return
     }
 
-    // Agregar resumen por sucursal
+    // Agregar resumen por sucursal con mejoras
     Object.entries(deudaPorSucursal).forEach(([sucursal, datos]) => {
+      const pagosRealizados = calcularPagosSucursal(empresaId, sucursal)
+      const deudaNeta = Math.max(0, datos.deudaTotal - pagosRealizados)
       const promedio = datos.miembros > 0 ? datos.deudaTotal / datos.miembros : 0
+      const estadoCuenta = deudaNeta > 0 ? 'Con Deuda' : 'Sin Deuda'
+      const badgeClass = deudaNeta > 0 ? 'badge-warning' : 'badge-success'
 
       const row = document.createElement("tr")
       row.className = "hover:bg-gray-50 dark:hover:bg-gray-700"
 
       row.innerHTML = `
-        <td class="py-2 px-4">${sucursal}</td>
-        <td class="py-2 px-4">${datos.miembros}</td>
-        <td class="py-2 px-4">$${datos.deudaTotal.toFixed(2)}</td>
-        <td class="py-2 px-4">$${promedio.toFixed(2)}</td>
+        <td class="py-3 px-4">
+          <div class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <strong>${sucursal}</strong>
+          </div>
+        </td>
+        <td class="py-3 px-4">${datos.miembros}</td>
+        <td class="py-3 px-4">$${deudaNeta.toFixed(2)}</td>
+        <td class="py-3 px-4">$${promedio.toFixed(2)}</td>
+        <td class="py-3 px-4">
+          <span class="badge ${badgeClass}">${estadoCuenta}</span>
+        </td>
+        <td class="py-3 px-4">
+          <button onclick="verDetallesSucursal('${empresaId}', '${sucursal}')" class="text-primary hover:text-primary/80 text-sm font-medium">
+            Ver detalles
+          </button>
+        </td>
       `
 
       resumenBody.appendChild(row)
@@ -1632,7 +2142,7 @@ async function loadResumenSucursales(empresaId) {
     const resumenBody = document.getElementById("detalleResumenSucursalesBody")
     if (resumenBody) {
       resumenBody.innerHTML =
-        '<tr><td colspan="4" class="py-4 text-center text-red-500">Error al cargar resumen</td></tr>'
+        '<tr><td colspan="6" class="py-4 text-center text-red-500">Error al cargar resumen</td></tr>'
     }
   }
 }
@@ -1669,7 +2179,9 @@ async function loadEmpresaMiembros(empresaId) {
       row.className = "hover:bg-gray-50 dark:hover:bg-gray-700"
 
       row.innerHTML = `
-        <td class="py-2 px-4">${miembro.sucursal || "-"}</td>
+        <td class="py-2 px-4">
+          <span class="badge badge-success">${miembro.sucursal || "-"}</span>
+        </td>
         <td class="py-2 px-4">${clienteNombre}</td>
         <td class="py-2 px-4">$${limiteCredito.toFixed(2)}</td>
         <td class="py-2 px-4">$${creditoUsado.toFixed(2)}</td>
@@ -1727,6 +2239,7 @@ async function editEmpresa(empresaId) {
       const modal = document.getElementById("empresaModal")
       if (modal) {
         modal.style.display = "block"
+        modal.style.zIndex = "2000"
         document.getElementById("empresaModalTitle").textContent = "Editar Empresa"
         document.getElementById("empresaForm").reset()
         document.getElementById("empresaId").value = empresaId
@@ -1817,9 +2330,13 @@ async function editMiembro(miembroId) {
       const modal = document.getElementById("miembroModal")
       if (modal) {
         modal.style.display = "block"
+        modal.style.zIndex = "2000"
         document.getElementById("miembroModalTitle").textContent = "Editar Miembro"
         document.getElementById("miembroForm").reset()
         document.getElementById("miembroId").value = miembroId
+
+        // Evitar eventos automáticos durante la carga
+        preventAutoEvents = true
 
         // Llenar información del miembro
         document.getElementById("miembroEmpresa").value = miembro.empresaId || ""
@@ -1829,7 +2346,11 @@ async function editMiembro(miembroId) {
         document.getElementById("miembroEmpresa").dispatchEvent(event)
 
         // Preseleccionar sucursal
-        document.getElementById("miembroSucursal").value = miembro.sucursal || ""
+        setTimeout(() => {
+          document.getElementById("miembroSucursal").value = miembro.sucursal || ""
+          // Restaurar eventos automáticos
+          preventAutoEvents = false
+        }, 100)
 
         document.getElementById("miembroCliente").value = miembro.clienteId || ""
         document.getElementById("miembroLimiteCredito").value = miembro.limiteCredito || 3500
@@ -1885,6 +2406,7 @@ async function adjustCredit(miembroId) {
     const modal = document.getElementById("ajustarCreditoModal")
     if (modal) {
       modal.style.display = "block"
+      modal.style.zIndex = "2000"
 
       // Llenar información del miembro
       document.getElementById("ajustarCreditoMiembroId").value = miembroId
@@ -1947,7 +2469,7 @@ async function confirmDeleteMiembro(miembroId) {
   }
 }
 
-// Configurar eventos para los botones del modal de detalle de miembro
+// Configurar eventos para los botones del modal de detalle de miembro (CORREGIDO)
 function setupDetalleMiembroEvents() {
   // Configurar botones para editar miembros
   const editButtons = document.querySelectorAll(".edit-detalle-miembro")
@@ -1957,14 +2479,16 @@ function setupDetalleMiembroEvents() {
       editMiembro(miembroId)
 
       // Cerrar modal de detalle
-      document.getElementById("detalleEmpresaModal").style.display = "none"
+      //document.getElementById("detalleEmpresaModal").style.display = "none"
     })
   })
 
-  // Configurar botones para ajustar crédito
+  // Configurar botones para ajustar crédito (CORREGIDO)
   const adjustButtons = document.querySelectorAll(".adjust-detalle-credit")
   adjustButtons.forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (e) => {
+      e.preventDefault()
+      e.stopPropagation()
       const miembroId = button.getAttribute("data-id")
       adjustCredit(miembroId)
     })
@@ -2029,3 +2553,12 @@ async function corregirMiembrosSinCredito() {
     showToast("Error al corregir miembros existentes", "danger")
   }
 }
+
+// Hacer las funciones disponibles globalmente
+window.toggleSucursalesView = toggleSucursalesView
+window.verDetallesSucursal = verDetallesSucursal
+
+// Exportar funciones para uso global si es necesario
+window.validateConvenioCredit = validateConvenioCredit
+window.calcularCreditoUsadoMiembro = calcularCreditoUsadoMiembro
+window.calcularCreditoDisponibleMiembro = calcularCreditoDisponibleMiembro
