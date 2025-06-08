@@ -2507,7 +2507,7 @@ async function loadSalePayments(ventaId) {
 
   try {
     const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
-      getDoc(db, "ventas", ventaId),
+      getDoc(doc(db, "ventas", ventaId)), // CORREGIDO
       getDocs(query(collection(db, "abonos"), where("ventaId", "==", ventaId), orderBy("fecha", "asc"))),
       getDocs(query(collection(db, "pagos"), where("ventaId", "==", ventaId), orderBy("fecha", "asc"))),
     ])
@@ -2960,7 +2960,7 @@ async function calcularSaldoPendienteActualizado(ventaId) {
     saldoCache.delete(ventaId)
     
     const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
-      getDoc(doc(db, "ventas", ventaId)),
+      getDoc(doc(db, "ventas", ventaId)), // CORREGIDO
       getDocs(query(collection(db, "abonos"), where("ventaId", "==", ventaId))),
       getDocs(query(collection(db, "pagos"), where("ventaId", "==", ventaId))),
     ])
@@ -3032,7 +3032,7 @@ async function calcularSaldoPendiente(ventaId) {
 
   try {
     const [ventaDoc, abonosSnapshot, pagosSnapshot] = await Promise.all([
-      getDoc(doc(db, "ventas", ventaId)),
+      getDoc(doc(db, "ventas", ventaId)), // CORREGIDO
       getDocs(query(collection(db, "abonos"), where("ventaId", "==", ventaId))),
       getDocs(query(collection(db, "pagos"), where("ventaId", "==", ventaId))),
     ])
